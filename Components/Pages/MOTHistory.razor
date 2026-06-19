@@ -4,100 +4,116 @@
 @rendermode InteractiveServer
 @inject DVSAApiService MotService
 
-<h2>STATIC TEST MESSAGE: MOTHistory.razor is loaded</h2>
+<PageTitle>MOT History Checker</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center">
-    <h3>MOT History Checker</h3>
-    <a href="/settings" class="btn btn-outline-secondary btn-sm">Settings</a>
-</div>
+<section class="page-header">
+    <h1>MOT History Checker</h1>
+    <p class="page-subtitle">Look up the full MOT test history for any UK-registered vehicle.</p>
+</section>
 
-<div class="mb-3">
-    <label for="regInput">Vehicle Registration:</label>
-    <input id="regInput" @bind="registration" class="form-control" />
-    <button class="btn btn-primary mt-2" @onclick="CheckMotHistory">Check MOT History</button>
-</div>
+<section class="card search-card">
+    <form class="search-bar" @onsubmit="CheckMotHistory">
+        <div class="form-field search-field">
+            <label for="regInput" class="form-label">Vehicle registration</label>
+            <input id="regInput" @bind="registration" class="input plate-input" placeholder="e.g. AB12 CDE" autocomplete="off" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@isLoading">
+            @if (isLoading)
+            {
+                <span class="spinner" aria-hidden="true"></span>
+                <span>Checking…</span>
+            }
+            else
+            {
+                <span>Check history</span>
+            }
+        </button>
+    </form>
+</section>
 
-@if (isLoading)
-{
-    <p>Loading...</p>
-}
 @if (error != null)
 {
-    <div class="alert alert-danger">@error</div>
-}
-@if (motTests != null)
-{
-    <h4>Results for @registration</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Test Result</th>
-                <th>Expiry Date</th>
-                <th>Odometer</th>
-                <th>Failures</th>
-                <th>Advisories</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var test in motTests)
-            {
-                <tr>
-                    <td>@test.TestDate.ToShortDateString()</td>
-                    <td>@test.TestResult</td>
-                    <td>@test.ExpiryDate?.ToShortDateString()</td>
-                    <td>@test.OdometerValue @test.OdometerUnit</td>
-                    <td>
-                        @if (test.Failures.Count == 0)
-                        {
-                            <span>None</span>
-                        }
-                        else
-                        {
-                            <ul>
-                                @foreach (var f in test.Failures)
-                                {
-                                    <li>@f</li>
-                                }
-                            </ul>
-                        }
-                    </td>
-                    <td>
-                        @if (test.Advisories.Count == 0)
-                        {
-                            <span>None</span>
-                        }
-                        else
-                        {
-                            <ul>
-                                @foreach (var a in test.Advisories)
-                                {
-                                    <li>@a</li>
-                                }
-                            </ul>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="alert alert-danger" role="alert">@error</div>
 }
 
-@if (buttonClicked)
+@if (motTests != null)
 {
-    <div class="alert alert-info">Button clicked!</div>
+    @if (motTests.Count == 0)
+    {
+        <div class="empty-state">No MOT tests found for this vehicle.</div>
+    }
+    else
+    {
+        <section class="results">
+            <div class="results-header">
+                <h2>Results for <span class="plate-chip">@registration</span></h2>
+                <span class="results-count">@motTests.Count test@(motTests.Count == 1 ? "" : "s")</span>
+            </div>
+            <ul class="timeline">
+                @foreach (var test in motTests)
+                {
+                    var statusClass = StatusClass(test.TestResult);
+                    <li class="timeline-item">
+                        <div class="timeline-marker @statusClass"></div>
+                        <div class="timeline-content card">
+                            <div class="timeline-row">
+                                <span class="timeline-date">@test.TestDate.ToString("d MMM yyyy")</span>
+                                <span class="badge @statusClass">@test.TestResult</span>
+                            </div>
+                            <div class="timeline-meta">
+                                <span>Odometer: <strong>@test.OdometerValue @test.OdometerUnit</strong></span>
+                                @if (test.ExpiryDate is not null)
+                                {
+                                    <span>Expires: <strong>@test.ExpiryDate.Value.ToString("d MMM yyyy")</strong></span>
+                                }
+                            </div>
+                            @if (test.Failures.Count > 0)
+                            {
+                                <div class="defect-group defect-fail">
+                                    <h4>Failures</h4>
+                                    <ul>
+                                        @foreach (var f in test.Failures)
+                                        {
+                                            <li>@f</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                            @if (test.Advisories.Count > 0)
+                            {
+                                <div class="defect-group defect-advisory">
+                                    <h4>Advisories</h4>
+                                    <ul>
+                                        @foreach (var a in test.Advisories)
+                                        {
+                                            <li>@a</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                            @if (test.Failures.Count == 0 && test.Advisories.Count == 0)
+                            {
+                                <p class="no-defects">No defects recorded.</p>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
 }
 
 @code {
     private string registration = string.Empty;
     private string? error;
     private bool isLoading = false;
-    private bool buttonClicked = false;
     private List<MotTest>? motTests;
+
+    private static string StatusClass(string result) =>
+        result.Contains("PASS", StringComparison.OrdinalIgnoreCase) ? "status-pass" : "status-fail";
 
     private async Task CheckMotHistory()
     {
-        buttonClicked = true;
         error = null;
         motTests = null;
         isLoading = true;

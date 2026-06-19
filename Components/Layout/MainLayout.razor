@@ -1,6 +1,24 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@Body
+<div class="app-shell">
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="/">
+                <span class="brand-mark">MOT</span>
+                <span class="brand-name">MOT History</span>
+            </a>
+            <nav class="topnav">
+                <NavLink href="/" Match="NavLinkMatch.All">Lookup</NavLink>
+                <NavLink href="/settings">Settings</NavLink>
+            </nav>
+        </div>
+    </header>
+    <main class="app-main">
+        <div class="container">
+            @Body
+        </div>
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
