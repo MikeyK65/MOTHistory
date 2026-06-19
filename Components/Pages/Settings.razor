@@ -1,0 +1,57 @@
+@page "/settings"
+@rendermode InteractiveServer
+@inject DVSASettingsService SettingsService
+
+<h3>DVSA API Settings</h3>
+
+<EditForm Model="model" OnSubmit="Save">
+    <div class="mb-3">
+        <label for="apiKey" class="form-label">API Key</label>
+        <input id="apiKey" type="password" class="form-control" @bind="model.ApiKey" autocomplete="off" />
+    </div>
+
+    <div class="mb-3">
+        <label for="baseUrl" class="form-label">Base URL</label>
+        <input id="baseUrl" class="form-control" @bind="model.BaseUrl" placeholder="https://history.mot.api.gov.uk" />
+    </div>
+    <div class="mb-3">
+        <label for="clientId" class="form-label">Client ID</label>
+        <input id="clientId" class="form-control" @bind="model.ClientId" autocomplete="off" />
+    </div>
+    <div class="mb-3">
+        <label for="clientSecret" class="form-label">Client Secret</label>
+        <input id="clientSecret" type="password" class="form-control" @bind="model.ClientSecret" autocomplete="off" />
+    </div>
+    <div class="mb-3">
+        <label for="scopeUrl" class="form-label">Scope URL</label>
+        <input id="scopeUrl" class="form-control" @bind="model.ScopeUrl" placeholder="https://tapi.dvsa.gov.uk/.default" />
+    </div>
+    <div class="mb-3">
+        <label for="tokenUrl" class="form-label">Token URL</label>
+        <input id="tokenUrl" class="form-control" @bind="model.TokenUrl" placeholder="https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="/" class="btn btn-link">Back to MOT history checker</a>
+</EditForm>
+
+@if (saved)
+{
+    <div class="alert alert-success mt-3">Settings saved.</div>
+}
+
+@code {
+    private DVSASettings model = new();
+    private bool saved;
+
+    protected override void OnInitialized()
+    {
+        model = SettingsService.Current;
+    }
+
+    private void Save()
+    {
+        SettingsService.Save(model);
+        saved = true;
+    }
+}

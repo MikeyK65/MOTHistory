@@ -1,0 +1,189 @@
+@using System.Text.Json
+
+@page "/"
+@rendermode InteractiveServer
+@inject DVSAApiService MotService
+
+<h2>STATIC TEST MESSAGE: MOTHistory.razor is loaded</h2>
+
+<div class="d-flex justify-content-between align-items-center">
+    <h3>MOT History Checker</h3>
+    <a href="/settings" class="btn btn-outline-secondary btn-sm">Settings</a>
+</div>
+
+<div class="mb-3">
+    <label for="regInput">Vehicle Registration:</label>
+    <input id="regInput" @bind="registration" class="form-control" />
+    <button class="btn btn-primary mt-2" @onclick="CheckMotHistory">Check MOT History</button>
+</div>
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+@if (error != null)
+{
+    <div class="alert alert-danger">@error</div>
+}
+@if (motTests != null)
+{
+    <h4>Results for @registration</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Test Result</th>
+                <th>Expiry Date</th>
+                <th>Odometer</th>
+                <th>Failures</th>
+                <th>Advisories</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var test in motTests)
+            {
+                <tr>
+                    <td>@test.TestDate.ToShortDateString()</td>
+                    <td>@test.TestResult</td>
+                    <td>@test.ExpiryDate?.ToShortDateString()</td>
+                    <td>@test.OdometerValue @test.OdometerUnit</td>
+                    <td>
+                        @if (test.Failures.Count == 0)
+                        {
+                            <span>None</span>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var f in test.Failures)
+                                {
+                                    <li>@f</li>
+                                }
+                            </ul>
+                        }
+                    </td>
+                    <td>
+                        @if (test.Advisories.Count == 0)
+                        {
+                            <span>None</span>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var a in test.Advisories)
+                                {
+                                    <li>@a</li>
+                                }
+                            </ul>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (buttonClicked)
+{
+    <div class="alert alert-info">Button clicked!</div>
+}
+
+@code {
+    private string registration = string.Empty;
+    private string? error;
+    private bool isLoading = false;
+    private bool buttonClicked = false;
+    private List<MotTest>? motTests;
+
+    private async Task CheckMotHistory()
+    {
+        buttonClicked = true;
+        error = null;
+        motTests = null;
+        isLoading = true;
+        try
+        {
+            var (json, apiError) = await MotService.GetMotHistoryAsync(registration);
+            if (apiError is not null)
+            {
+                error = apiError;
+                return;
+            }
+
+            if (json is null)
+            {
+                error = "No MOT history found or API error.";
+                return;
+            }
+
+            JsonElement vehicle;
+            if (json.Value.ValueKind == JsonValueKind.Array)
+            {
+                if (json.Value.GetArrayLength() == 0)
+                {
+                    error = "No MOT history found.";
+                    return;
+                }
+                vehicle = json.Value[0];
+            }
+            else
+            {
+                vehicle = json.Value;
+            }
+
+            motTests = new List<MotTest>();
+            if (vehicle.TryGetProperty("motTests", out var tests) && tests.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var t in tests.EnumerateArray())
+                {
+                    var test = new MotTest
+                    {
+                        TestDate = t.TryGetProperty("completedDate", out var cd) ? cd.GetDateTime() : default,
+                        TestResult = t.TryGetProperty("testResult", out var tr) ? (tr.GetString() ?? "") : "",
+                        ExpiryDate = t.TryGetProperty("expiryDate", out var exp) && exp.ValueKind != JsonValueKind.Null ? exp.GetDateTime() : (DateTime?)null,
+                        OdometerValue = t.TryGetProperty("odometerValue", out var odo) ? (odo.GetString() ?? "") : "",
+                        OdometerUnit = t.TryGetProperty("odometerUnit", out var unit) ? (unit.GetString() ?? "") : "",
+                        Failures = new List<string>(),
+                        Advisories = new List<string>()
+                    };
+
+                    if (t.TryGetProperty("defects", out var defects) && defects.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var d in defects.EnumerateArray())
+                        {
+                            var type = d.TryGetProperty("type", out var dt) ? dt.GetString() : null;
+                            var text = d.TryGetProperty("text", out var txt) ? txt.GetString() : null;
+                            // DANGEROUS/MAJOR/FAIL (legacy) defects fail the test; MINOR/ADVISORY don't.
+                            if (type is "FAIL" or "MAJOR" or "DANGEROUS") test.Failures.Add(text ?? "");
+                            else if (type is "ADVISORY" or "MINOR") test.Advisories.Add(text ?? "");
+                        }
+                    }
+                    motTests.Add(test);
+                }
+            }
+            else
+            {
+                error = "No MOT test records were returned.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class MotTest
+    {
+        public DateTime TestDate { get; set; }
+        public string TestResult { get; set; } = "";
+        public DateTime? ExpiryDate { get; set; }
+        public string OdometerValue { get; set; } = "";
+        public string OdometerUnit { get; set; } = "";
+        public List<string> Failures { get; set; } = new();
+        public List<string> Advisories { get; set; } = new();
+    }
+}
