@@ -150,10 +150,10 @@ public partial class SearchPage : ContentPage
 
         RefreshSaveButton();
 
-        // Results list via BindableLayout
+        // Results list — built programmatically so tap gestures work and text never clips
         var count = _currentTests.Count;
         ResultsHeaderLabel.Text = $"Results for {reg}  ·  {count} test{(count == 1 ? "" : "s")}";
-        BindableLayout.SetItemsSource(TestResultsList, _currentTests);
+        BuildTestCards(_currentTests);
 
         // Mileage chart
         var chartPoints = _currentTests.Where(t => t.OdometerMiles > 0).ToList();
@@ -174,6 +174,169 @@ public partial class SearchPage : ContentPage
 
         ResultsSection.IsVisible = true;
     }
+
+    private void BuildTestCards(List<MotTest> tests)
+    {
+        TestResultsList.Children.Clear();
+        foreach (var test in tests)
+            TestResultsList.Children.Add(BuildTestCard(test));
+    }
+
+    private View BuildTestCard(MotTest test)
+    {
+        bool passed = test.IsPassed;
+        var badgeColor = passed ? Color.FromArgb("#34C759") : Color.FromArgb("#FF3B30");
+
+        // Date label
+        var dateLabel = new Label
+        {
+            Text = test.TestDate.ToString("d MMM yyyy"),
+            FontSize = 17,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#1C1C1E"),
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        // Pass/Fail badge
+        var badge = new Border
+        {
+            BackgroundColor = badgeColor,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+            Padding = new Thickness(10, 5),
+            VerticalOptions = LayoutOptions.Center,
+            Content = new Label
+            {
+                Text = test.TestResult,
+                TextColor = Colors.White,
+                FontSize = 12,
+                FontAttributes = FontAttributes.Bold
+            }
+        };
+
+        var headerRow = new Grid
+        {
+            ColumnDefinitions =
+            [
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Auto)
+            ],
+            ColumnSpacing = 10
+        };
+        headerRow.SetColumn(dateLabel, 0);
+        headerRow.SetColumn(badge, 1);
+        headerRow.Children.Add(dateLabel);
+        headerRow.Children.Add(badge);
+
+        var stack = new VerticalStackLayout { Spacing = 0, Padding = new Thickness(16) };
+        stack.Children.Add(headerRow);
+
+        // Mileage + expiry
+        if (test.HasOdometer)
+            stack.Children.Add(new Label
+            {
+                Text = test.OdometerDisplay,
+                FontSize = 14,
+                TextColor = Color.FromArgb("#6E6E73"),
+                Margin = new Thickness(0, 6, 0, 0)
+            });
+
+        if (test.HasExpiry)
+            stack.Children.Add(new Label
+            {
+                Text = test.ExpiryDisplay,
+                FontSize = 14,
+                TextColor = Color.FromArgb("#6E6E73"),
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+
+        // Defect summary chips
+        if (test.HasFailures || test.HasAdvisories || test.HasNoDefects)
+        {
+            stack.Children.Add(new BoxView
+            {
+                HeightRequest = 1,
+                BackgroundColor = Color.FromArgb("#C6C6C8"),
+                Margin = new Thickness(0, 10, 0, 8)
+            });
+        }
+
+        if (test.HasNoDefects)
+        {
+            stack.Children.Add(new Label
+            {
+                Text = "No defects recorded",
+                FontSize = 14,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = Color.FromArgb("#34C759")
+            });
+        }
+        else
+        {
+            var chipRow = new HorizontalStackLayout { Spacing = 8 };
+
+            if (test.HasFailures)
+                chipRow.Children.Add(BuildChip(
+                    $"{test.Failures.Count} failure{(test.Failures.Count == 1 ? "" : "s")}",
+                    Color.FromArgb("#FF3B30"), Color.FromArgb("#FFF0EF")));
+
+            if (test.HasAdvisories)
+                chipRow.Children.Add(BuildChip(
+                    $"{test.Advisories.Count} advisor{(test.Advisories.Count == 1 ? "y" : "ies")}",
+                    Color.FromArgb("#FF9500"), Color.FromArgb("#FFF6E8")));
+
+            stack.Children.Add(chipRow);
+        }
+
+        // "Tap for details" hint
+        var hint = new Label
+        {
+            Text = "Tap to view full details",
+            FontSize = 12,
+            TextColor = Color.FromArgb("#AEAEB2"),
+            Margin = new Thickness(0, 8, 0, 0),
+            HorizontalOptions = LayoutOptions.End
+        };
+        stack.Children.Add(hint);
+
+        var card = new Border
+        {
+            BackgroundColor = Colors.White,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 14 },
+            Shadow = new Shadow { Brush = Brush.Black, Offset = new Point(0, 2), Radius = 8, Opacity = 0.07f },
+            Margin = new Thickness(16, 6),
+            Content = stack
+        };
+
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += async (_, _) =>
+            await Navigation.PushModalAsync(
+                new NavigationPage(new MotTestDetailPage(test))
+                {
+                    BarBackgroundColor = Color.FromArgb("#007AFF"),
+                    BarTextColor = Colors.White
+                });
+        card.GestureRecognizers.Add(tap);
+
+        return card;
+    }
+
+    private static View BuildChip(string text, Color textColor, Color bgColor) =>
+        new Border
+        {
+            BackgroundColor = bgColor,
+            StrokeThickness = 0,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 8 },
+            Padding = new Thickness(10, 4),
+            Content = new Label
+            {
+                Text = text,
+                FontSize = 13,
+                FontAttributes = FontAttributes.Bold,
+                TextColor = textColor
+            }
+        };
 
     private void BuildDefectTrends(List<MotTest> tests)
     {
