@@ -1,0 +1,32 @@
+using Microsoft.Extensions.Logging;
+using MOTHistory.Maui.Pages;
+using MOTHistory.Maui.Services;
+
+namespace MOTHistory.Maui;
+
+public static class MauiProgram
+{
+    public static MauiApp CreateMauiApp()
+    {
+        var builder = MauiApp.CreateBuilder();
+
+        builder
+            .UseMauiApp<App>()
+            .ConfigureFonts(fonts =>
+            {
+                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+            });
+
+        builder.Services.AddSingleton<DVSASettingsService>();
+        builder.Services.AddHttpClient<DVSAApiService>();
+        builder.Services.AddTransient<SearchPage>();
+        builder.Services.AddTransient<SettingsPage>();
+
+#if DEBUG
+        builder.Logging.AddDebug();
+#endif
+
+        return builder.Build();
+    }
+}

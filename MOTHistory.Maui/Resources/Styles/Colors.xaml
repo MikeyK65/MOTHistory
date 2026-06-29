@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- iOS system-inspired palette -->
+    <Color x:Key="PrimaryColor">#007AFF</Color>
+    <Color x:Key="PrimaryDarkColor">#0056CC</Color>
+    <Color x:Key="BackgroundColor">#F2F2F7</Color>
+    <Color x:Key="SurfaceColor">#FFFFFF</Color>
+    <Color x:Key="TextPrimary">#1C1C1E</Color>
+    <Color x:Key="TextSecondary">#6E6E73</Color>
+    <Color x:Key="SeparatorColor">#C6C6C8</Color>
+    <Color x:Key="PassColor">#34C759</Color>
+    <Color x:Key="FailColor">#FF3B30</Color>
+    <Color x:Key="AdvisoryColor">#FF9500</Color>
+    <Color x:Key="PassBackgroundColor">#E8F8EC</Color>
+    <Color x:Key="FailBackgroundColor">#FFF0EF</Color>
+    <Color x:Key="AdvisoryBackgroundColor">#FFF6E8</Color>
+    <Color x:Key="InputBorderColor">#D1D1D6</Color>
+    <Color x:Key="PlaceholderColor">#AEAEB2</Color>
+
+</ResourceDictionary>

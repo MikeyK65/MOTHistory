@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Card border -->
+    <Style x:Key="CardBorder" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource SurfaceColor}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 14" />
+        <Setter Property="Shadow">
+            <Shadow Brush="{StaticResource TextPrimary}" Offset="0,2" Radius="8" Opacity="0.07" />
+        </Setter>
+    </Style>
+
+    <!-- Primary button -->
+    <Style x:Key="PrimaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource PrimaryColor}" />
+        <Setter Property="TextColor" Value="White" />
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="HeightRequest" Value="50" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+    <!-- Secondary button -->
+    <Style x:Key="SecondaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor" Value="{StaticResource PrimaryColor}" />
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="BorderColor" Value="{StaticResource PrimaryColor}" />
+        <Setter Property="BorderWidth" Value="1.5" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="HeightRequest" Value="46" />
+        <Setter Property="HorizontalOptions" Value="Fill" />
+    </Style>
+
+    <!-- Standard entry -->
+    <Style x:Key="StandardEntry" TargetType="Entry">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource PlaceholderColor}" />
+        <Setter Property="BackgroundColor" Value="{StaticResource SurfaceColor}" />
+    </Style>
+
+    <!-- Registration plate entry — mimics UK plate style -->
+    <Style x:Key="PlateEntry" TargetType="Entry">
+        <Setter Property="FontSize" Value="22" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+        <Setter Property="PlaceholderColor" Value="{StaticResource PlaceholderColor}" />
+        <Setter Property="BackgroundColor" Value="#FFFDE7" />
+        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="HeightRequest" Value="56" />
+        <Setter Property="Keyboard" Value="Text" />
+    </Style>
+
+    <!-- Form label -->
+    <Style x:Key="FormLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+        <Setter Property="TextTransform" Value="Uppercase" />
+        <Setter Property="CharacterSpacing" Value="0.5" />
+    </Style>
+
+    <!-- Form hint -->
+    <Style x:Key="HintLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+    </Style>
+
+    <!-- Section header in results -->
+    <Style x:Key="SectionHeader" TargetType="Label">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+    </Style>
+
+    <!-- Primary text label -->
+    <Style x:Key="TitleLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="17" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+    </Style>
+
+    <!-- Secondary / caption label -->
+    <Style x:Key="SecondaryLabel" TargetType="Label">
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="TextColor" Value="{StaticResource TextSecondary}" />
+    </Style>
+
+    <!-- Defect sub-heading -->
+    <Style x:Key="DefectHeading" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextTransform" Value="Uppercase" />
+        <Setter Property="CharacterSpacing" Value="0.3" />
+    </Style>
+
+    <!-- Defect item text -->
+    <Style x:Key="DefectItem" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}" />
+    </Style>
+
+    <!-- Error border -->
+    <Style x:Key="ErrorBorder" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource FailBackgroundColor}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+
+    <!-- Success border -->
+    <Style x:Key="SuccessBorder" TargetType="Border">
+        <Setter Property="BackgroundColor" Value="{StaticResource PassBackgroundColor}" />
+        <Setter Property="StrokeThickness" Value="0" />
+        <Setter Property="StrokeShape" Value="RoundRectangle 10" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+
+</ResourceDictionary>
