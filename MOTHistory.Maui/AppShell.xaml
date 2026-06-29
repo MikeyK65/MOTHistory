@@ -15,6 +15,11 @@
             Route="SearchPage" />
 
         <ShellContent
+            Title="Garage"
+            ContentTemplate="{DataTemplate pages:GaragePage}"
+            Route="GaragePage" />
+
+        <ShellContent
             Title="Settings"
             ContentTemplate="{DataTemplate pages:SettingsPage}"
             Route="SettingsPage" />

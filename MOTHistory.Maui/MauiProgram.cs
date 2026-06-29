@@ -19,9 +19,14 @@ public static class MauiProgram
             });
 
         builder.Services.AddSingleton<DVSASettingsService>();
+        builder.Services.AddSingleton<RecentSearchesService>();
+        builder.Services.AddSingleton<SavedVehiclesService>();
+        builder.Services.AddSingleton<OfflineCacheService>();
+        builder.Services.AddSingleton<PendingSearchService>();
         builder.Services.AddHttpClient<DVSAApiService>();
         builder.Services.AddTransient<SearchPage>();
         builder.Services.AddTransient<SettingsPage>();
+        builder.Services.AddTransient<GaragePage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

@@ -8,7 +8,7 @@
 
     <Grid RowDefinitions="Auto,*">
 
-        <!-- ── Hero header ── -->
+        <!-- Hero header (pinned) -->
         <Grid Grid.Row="0" BackgroundColor="{StaticResource PrimaryColor}">
             <Grid.Padding>
                 <OnPlatform x:TypeArguments="Thickness">
@@ -27,213 +27,290 @@
             </VerticalStackLayout>
         </Grid>
 
-        <!-- ── Main scroll area ── -->
-        <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto,*">
+        <!-- Scrollable content -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Spacing="0" Padding="0,0,0,32">
 
-            <!-- Search card -->
-            <Border Grid.Row="0" Style="{StaticResource CardBorder}" Margin="16,16,16,0">
-                <VerticalStackLayout Spacing="10" Padding="16">
-                    <Label Text="Vehicle Registration" Style="{StaticResource FormLabel}" />
+                <!-- Search card -->
+                <Border Style="{StaticResource CardBorder}" Margin="16,16,16,0">
+                    <VerticalStackLayout Spacing="10" Padding="16">
+                        <Label Text="Vehicle Registration" Style="{StaticResource FormLabel}" />
+                        <Border BackgroundColor="#FFFDE7"
+                                StrokeThickness="1.5"
+                                Stroke="{StaticResource InputBorderColor}"
+                                StrokeShape="RoundRectangle 10">
+                            <Entry x:Name="RegistrationEntry"
+                                   Style="{StaticResource PlateEntry}"
+                                   Placeholder="e.g. AB12 CDE"
+                                   ReturnType="Search"
+                                   Completed="OnRegistrationCompleted" />
+                        </Border>
+                        <Button x:Name="SearchButton"
+                                Text="Check History"
+                                Style="{StaticResource PrimaryButton}"
+                                Clicked="OnSearchClicked" />
+                    </VerticalStackLayout>
+                </Border>
 
-                    <!-- UK plate-styled entry wrapped in a rounded border -->
-                    <Border BackgroundColor="#FFFDE7"
-                            StrokeThickness="1.5"
-                            Stroke="{StaticResource InputBorderColor}"
-                            StrokeShape="RoundRectangle 10">
-                        <Entry x:Name="RegistrationEntry"
-                               Style="{StaticResource PlateEntry}"
-                               Placeholder="e.g. AB12 CDE"
-                               ReturnType="Search"
-                               Completed="OnRegistrationCompleted" />
+                <!-- Loading indicator -->
+                <ActivityIndicator x:Name="LoadingIndicator"
+                                   IsRunning="False"
+                                   IsVisible="False"
+                                   Color="{StaticResource PrimaryColor}"
+                                   HeightRequest="44"
+                                   Margin="0,16,0,0" />
+
+                <!-- Offline / error banner -->
+                <Border x:Name="ErrorBorder"
+                        Style="{StaticResource ErrorBorder}"
+                        IsVisible="False"
+                        Margin="16,12,16,0">
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="!" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource FailColor}" VerticalOptions="Center" />
+                        <Label x:Name="ErrorLabel"
+                               FontSize="14"
+                               TextColor="{StaticResource FailColor}"
+                               LineBreakMode="WordWrap"
+                               HorizontalOptions="Fill" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Cached results notice -->
+                <Border x:Name="CacheBanner"
+                        IsVisible="False"
+                        BackgroundColor="#FFF6E8"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10"
+                        Padding="14,10"
+                        Margin="16,12,16,0">
+                    <HorizontalStackLayout Spacing="8">
+                        <Label Text="i" FontSize="14" FontAttributes="Bold" TextColor="{StaticResource AdvisoryColor}" VerticalOptions="Center" />
+                        <Label x:Name="CacheBannerLabel"
+                               FontSize="13"
+                               TextColor="{StaticResource AdvisoryColor}"
+                               LineBreakMode="WordWrap"
+                               HorizontalOptions="Fill" />
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- Recent searches (shown when no active result) -->
+                <VerticalStackLayout x:Name="RecentSearchesSection"
+                                     IsVisible="False"
+                                     Margin="16,16,16,0"
+                                     Spacing="8">
+                    <Label Text="RECENT SEARCHES" Style="{StaticResource FormLabel}" Margin="4,0" />
+                    <Border Style="{StaticResource CardBorder}">
+                        <VerticalStackLayout x:Name="RecentSearchesList" Spacing="0" Padding="0" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Empty state -->
+                <VerticalStackLayout x:Name="EmptyStateLayout"
+                                     IsVisible="False"
+                                     HorizontalOptions="Center"
+                                     Spacing="12"
+                                     Margin="40,32">
+                    <Label Text="No MOT tests found for this vehicle."
+                           FontSize="16"
+                           TextColor="{StaticResource TextSecondary}"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+
+                <!-- Results area (shown after successful search) -->
+                <VerticalStackLayout x:Name="ResultsSection" IsVisible="False" Spacing="0">
+
+                    <!-- Vehicle info card -->
+                    <Border x:Name="VehicleInfoCard"
+                            Style="{StaticResource CardBorder}"
+                            Margin="16,16,16,0"
+                            IsVisible="False">
+                        <VerticalStackLayout Spacing="4" Padding="16">
+                            <Label x:Name="VehicleMakeModelLabel"
+                                   FontSize="20"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource TextPrimary}" />
+                            <Label x:Name="VehicleColourFuelLabel"
+                                   FontSize="14"
+                                   TextColor="{StaticResource TextSecondary}" />
+                            <Label x:Name="VehicleFirstUsedLabel"
+                                   FontSize="13"
+                                   TextColor="{StaticResource TextSecondary}" />
+                        </VerticalStackLayout>
                     </Border>
 
-                    <Button x:Name="SearchButton"
-                            Text="Check History"
-                            Style="{StaticResource PrimaryButton}"
-                            Clicked="OnSearchClicked" />
-                </VerticalStackLayout>
-            </Border>
+                    <!-- Save / Share row -->
+                    <Grid ColumnDefinitions="*,*"
+                          Margin="16,10,16,0"
+                          ColumnSpacing="8">
+                        <Button Grid.Column="0"
+                                x:Name="SaveButton"
+                                Text="Save to Garage"
+                                Style="{StaticResource SecondaryButton}"
+                                HeightRequest="44"
+                                FontSize="15"
+                                Clicked="OnSaveClicked" />
+                        <Button Grid.Column="1"
+                                x:Name="ShareButton"
+                                Text="Share"
+                                BackgroundColor="Transparent"
+                                TextColor="{StaticResource PrimaryColor}"
+                                BorderColor="{StaticResource PrimaryColor}"
+                                BorderWidth="1.5"
+                                CornerRadius="12"
+                                HeightRequest="44"
+                                FontSize="15"
+                                HorizontalOptions="Fill"
+                                Clicked="OnShareClicked" />
+                    </Grid>
 
-            <!-- Loading indicator -->
-            <ActivityIndicator x:Name="LoadingIndicator"
-                               Grid.Row="1"
-                               IsRunning="False"
-                               IsVisible="False"
-                               Color="{StaticResource PrimaryColor}"
-                               HeightRequest="44"
-                               Margin="0,16,0,0" />
+                    <!-- Results header -->
+                    <Label x:Name="ResultsHeaderLabel"
+                           Margin="20,16,20,4"
+                           Style="{StaticResource SectionHeader}" />
 
-            <!-- Error banner -->
-            <Border x:Name="ErrorBorder"
-                    Grid.Row="2"
-                    Style="{StaticResource ErrorBorder}"
-                    IsVisible="False"
-                    Margin="16,12,16,0">
-                <HorizontalStackLayout Spacing="8">
-                    <Label Text="⚠" FontSize="16" TextColor="{StaticResource FailColor}" VerticalOptions="Center" />
-                    <Label x:Name="ErrorLabel"
-                           FontSize="14"
-                           TextColor="{StaticResource FailColor}"
-                           LineBreakMode="WordWrap"
-                           HorizontalOptions="Fill" />
-                </HorizontalStackLayout>
-            </Border>
+                    <!-- Test result cards (BindableLayout) -->
+                    <VerticalStackLayout x:Name="TestResultsList" Spacing="0">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:MotTest">
+                                <Border Style="{StaticResource CardBorder}" Margin="16,6">
+                                    <VerticalStackLayout Spacing="0" Padding="16">
 
-            <!-- Results header -->
-            <Label x:Name="ResultsHeaderLabel"
-                   Grid.Row="3"
-                   IsVisible="False"
-                   Margin="20,16,20,4"
-                   Style="{StaticResource SectionHeader}" />
+                                        <!-- Date + badge row -->
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                            <Label Grid.Column="0"
+                                                   Text="{Binding TestDate, StringFormat='{0:d MMM yyyy}'}"
+                                                   Style="{StaticResource TitleLabel}"
+                                                   VerticalOptions="Center" />
+                                            <Border Grid.Column="1"
+                                                    Padding="10,5"
+                                                    StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 8"
+                                                    VerticalOptions="Center">
+                                                <Border.Triggers>
+                                                    <DataTrigger TargetType="Border" Binding="{Binding IsPassed}" Value="True">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource PassColor}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger TargetType="Border" Binding="{Binding IsPassed}" Value="False">
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource FailColor}" />
+                                                    </DataTrigger>
+                                                </Border.Triggers>
+                                                <Label Text="{Binding TestResult}"
+                                                       TextColor="White"
+                                                       FontSize="12"
+                                                       FontAttributes="Bold"
+                                                       VerticalOptions="Center" />
+                                            </Border>
+                                        </Grid>
 
-            <!-- Empty state -->
-            <VerticalStackLayout x:Name="EmptyStateLayout"
-                                 Grid.Row="4"
-                                 IsVisible="False"
-                                 VerticalOptions="Center"
-                                 HorizontalOptions="Center"
-                                 Spacing="12"
-                                 Margin="40,0">
-                <Label Text="🔍"
-                       FontSize="48"
-                       HorizontalTextAlignment="Center" />
-                <Label Text="No MOT tests found for this vehicle."
-                       FontSize="16"
-                       TextColor="{StaticResource TextSecondary}"
-                       HorizontalTextAlignment="Center"
-                       LineBreakMode="WordWrap" />
-            </VerticalStackLayout>
+                                        <!-- Odometer + expiry -->
+                                        <Label Text="{Binding OdometerDisplay}"
+                                               Style="{StaticResource SecondaryLabel}"
+                                               Margin="0,6,0,0"
+                                               IsVisible="{Binding HasOdometer}" />
 
-            <!-- Results list -->
-            <CollectionView x:Name="ResultsView"
-                            Grid.Row="4"
-                            IsVisible="False"
-                            SelectionMode="None"
-                            ItemsUpdatingScrollMode="KeepItemsInView">
-                <CollectionView.ItemsLayout>
-                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="0" />
-                </CollectionView.ItemsLayout>
+                                        <Label Text="{Binding ExpiryDisplay}"
+                                               Style="{StaticResource SecondaryLabel}"
+                                               Margin="0,2,0,0"
+                                               IsVisible="{Binding HasExpiry}" />
 
-                <CollectionView.ItemTemplate>
-                    <DataTemplate x:DataType="models:MotTest">
-                        <Border Style="{StaticResource CardBorder}" Margin="16,6">
-                            <VerticalStackLayout Spacing="0" Padding="16">
+                                        <!-- Separator before defects -->
+                                        <BoxView HeightRequest="1"
+                                                 BackgroundColor="{StaticResource SeparatorColor}"
+                                                 Margin="0,12,0,10"
+                                                 IsVisible="{Binding HasDefects}" />
 
-                                <!-- Date + badge row -->
-                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                                    <Label Grid.Column="0"
-                                           Text="{Binding TestDate, StringFormat='{0:d MMM yyyy}'}"
-                                           Style="{StaticResource TitleLabel}"
-                                           VerticalOptions="Center" />
-                                    <Border Grid.Column="1"
-                                            Padding="10,5"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 8"
-                                            VerticalOptions="Center">
-                                        <Border.Triggers>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsPassed}" Value="True">
-                                                <Setter Property="BackgroundColor" Value="{StaticResource PassColor}" />
-                                            </DataTrigger>
-                                            <DataTrigger TargetType="Border" Binding="{Binding IsPassed}" Value="False">
-                                                <Setter Property="BackgroundColor" Value="{StaticResource FailColor}" />
-                                            </DataTrigger>
-                                        </Border.Triggers>
-                                        <Label Text="{Binding TestResult}"
-                                               TextColor="White"
-                                               FontSize="12"
+                                        <!-- Failures -->
+                                        <VerticalStackLayout IsVisible="{Binding HasFailures}" Spacing="6" Margin="0,0,0,8">
+                                            <Border BackgroundColor="{StaticResource FailBackgroundColor}"
+                                                    StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    Padding="10,8">
+                                                <VerticalStackLayout Spacing="4">
+                                                    <Label Text="Failures"
+                                                           Style="{StaticResource DefectHeading}"
+                                                           TextColor="{StaticResource FailColor}" />
+                                                    <StackLayout BindableLayout.ItemsSource="{Binding Failures}" Spacing="3">
+                                                        <BindableLayout.ItemTemplate>
+                                                            <DataTemplate x:DataType="x:String">
+                                                                <HorizontalStackLayout Spacing="6">
+                                                                    <Label Text="•" TextColor="{StaticResource FailColor}" FontSize="13" />
+                                                                    <Label Text="{Binding .}" Style="{StaticResource DefectItem}" HorizontalOptions="Fill" />
+                                                                </HorizontalStackLayout>
+                                                            </DataTemplate>
+                                                        </BindableLayout.ItemTemplate>
+                                                    </StackLayout>
+                                                </VerticalStackLayout>
+                                            </Border>
+                                        </VerticalStackLayout>
+
+                                        <!-- Advisories -->
+                                        <VerticalStackLayout IsVisible="{Binding HasAdvisories}" Spacing="6">
+                                            <Border BackgroundColor="{StaticResource AdvisoryBackgroundColor}"
+                                                    StrokeThickness="0"
+                                                    StrokeShape="RoundRectangle 6"
+                                                    Padding="10,8">
+                                                <VerticalStackLayout Spacing="4">
+                                                    <Label Text="Advisories"
+                                                           Style="{StaticResource DefectHeading}"
+                                                           TextColor="{StaticResource AdvisoryColor}" />
+                                                    <StackLayout BindableLayout.ItemsSource="{Binding Advisories}" Spacing="3">
+                                                        <BindableLayout.ItemTemplate>
+                                                            <DataTemplate x:DataType="x:String">
+                                                                <HorizontalStackLayout Spacing="6">
+                                                                    <Label Text="•" TextColor="{StaticResource AdvisoryColor}" FontSize="13" />
+                                                                    <Label Text="{Binding .}" Style="{StaticResource DefectItem}" HorizontalOptions="Fill" />
+                                                                </HorizontalStackLayout>
+                                                            </DataTemplate>
+                                                        </BindableLayout.ItemTemplate>
+                                                    </StackLayout>
+                                                </VerticalStackLayout>
+                                            </Border>
+                                        </VerticalStackLayout>
+
+                                        <!-- No defects -->
+                                        <Label Text="No defects recorded"
+                                               TextColor="{StaticResource PassColor}"
+                                               FontSize="14"
                                                FontAttributes="Bold"
-                                               VerticalOptions="Center" />
-                                    </Border>
-                                </Grid>
+                                               Margin="0,8,0,0"
+                                               IsVisible="{Binding HasNoDefects}" />
 
-                                <!-- Odometer + expiry -->
-                                <Label Text="{Binding OdometerDisplay}"
-                                       Style="{StaticResource SecondaryLabel}"
-                                       Margin="0,6,0,0"
-                                       IsVisible="{Binding HasOdometer}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
 
-                                <Label Text="{Binding ExpiryDisplay}"
-                                       Style="{StaticResource SecondaryLabel}"
-                                       Margin="0,2,0,0"
-                                       IsVisible="{Binding HasExpiry}" />
+                    <!-- Mileage chart card -->
+                    <Border x:Name="MileageChartCard"
+                            Style="{StaticResource CardBorder}"
+                            Margin="16,8,16,0"
+                            IsVisible="False">
+                        <VerticalStackLayout Padding="16" Spacing="8">
+                            <Label Text="MILEAGE HISTORY"
+                                   Style="{StaticResource FormLabel}" />
+                            <GraphicsView x:Name="MileageChart"
+                                          HeightRequest="180"
+                                          HorizontalOptions="Fill" />
+                        </VerticalStackLayout>
+                    </Border>
 
-                                <!-- Separator before defects -->
-                                <BoxView HeightRequest="1"
-                                         BackgroundColor="{StaticResource SeparatorColor}"
-                                         Margin="0,12,0,10"
-                                         IsVisible="{Binding HasDefects}" />
+                    <!-- Defect trends card -->
+                    <Border x:Name="DefectTrendsCard"
+                            Style="{StaticResource CardBorder}"
+                            Margin="16,8,16,0"
+                            IsVisible="False">
+                        <VerticalStackLayout x:Name="DefectTrendsContent"
+                                             Padding="16"
+                                             Spacing="8" />
+                    </Border>
 
-                                <!-- Failures section -->
-                                <VerticalStackLayout IsVisible="{Binding HasFailures}" Spacing="6" Margin="0,0,0,8">
-                                    <Border BackgroundColor="{StaticResource FailBackgroundColor}"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 6"
-                                            Padding="10,8">
-                                        <VerticalStackLayout Spacing="4">
-                                            <Label Text="Failures"
-                                                   Style="{StaticResource DefectHeading}"
-                                                   TextColor="{StaticResource FailColor}" />
-                                            <StackLayout BindableLayout.ItemsSource="{Binding Failures}" Spacing="3">
-                                                <BindableLayout.ItemTemplate>
-                                                    <DataTemplate x:DataType="x:String">
-                                                        <HorizontalStackLayout Spacing="6">
-                                                            <Label Text="•" TextColor="{StaticResource FailColor}" FontSize="13" />
-                                                            <Label Text="{Binding .}"
-                                                                   Style="{StaticResource DefectItem}"
-                                                                   HorizontalOptions="Fill" />
-                                                        </HorizontalStackLayout>
-                                                    </DataTemplate>
-                                                </BindableLayout.ItemTemplate>
-                                            </StackLayout>
-                                        </VerticalStackLayout>
-                                    </Border>
-                                </VerticalStackLayout>
+                </VerticalStackLayout>
 
-                                <!-- Advisories section -->
-                                <VerticalStackLayout IsVisible="{Binding HasAdvisories}" Spacing="6">
-                                    <Border BackgroundColor="{StaticResource AdvisoryBackgroundColor}"
-                                            StrokeThickness="0"
-                                            StrokeShape="RoundRectangle 6"
-                                            Padding="10,8">
-                                        <VerticalStackLayout Spacing="4">
-                                            <Label Text="Advisories"
-                                                   Style="{StaticResource DefectHeading}"
-                                                   TextColor="{StaticResource AdvisoryColor}" />
-                                            <StackLayout BindableLayout.ItemsSource="{Binding Advisories}" Spacing="3">
-                                                <BindableLayout.ItemTemplate>
-                                                    <DataTemplate x:DataType="x:String">
-                                                        <HorizontalStackLayout Spacing="6">
-                                                            <Label Text="•" TextColor="{StaticResource AdvisoryColor}" FontSize="13" />
-                                                            <Label Text="{Binding .}"
-                                                                   Style="{StaticResource DefectItem}"
-                                                                   HorizontalOptions="Fill" />
-                                                        </HorizontalStackLayout>
-                                                    </DataTemplate>
-                                                </BindableLayout.ItemTemplate>
-                                            </StackLayout>
-                                        </VerticalStackLayout>
-                                    </Border>
-                                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
 
-                                <!-- No defects -->
-                                <Label Text="✓  No defects recorded"
-                                       TextColor="{StaticResource PassColor}"
-                                       FontSize="14"
-                                       FontAttributes="Bold"
-                                       Margin="0,8,0,0"
-                                       IsVisible="{Binding HasNoDefects}" />
-
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-
-                <CollectionView.Footer>
-                    <BoxView HeightRequest="24" Color="Transparent" />
-                </CollectionView.Footer>
-            </CollectionView>
-
-        </Grid>
     </Grid>
 
 </ContentPage>

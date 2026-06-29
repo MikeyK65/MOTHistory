@@ -24,4 +24,13 @@ public class MotTest
 
     public string ExpiryDisplay =>
         ExpiryDate.HasValue ? $"Expires {ExpiryDate.Value:d MMM yyyy}" : "";
+
+    public double OdometerMiles
+    {
+        get
+        {
+            if (!double.TryParse(OdometerValue, out var m) || m <= 0) return 0;
+            return string.Equals(OdometerUnit, "km", StringComparison.OrdinalIgnoreCase) ? m * 0.621371 : m;
+        }
+    }
 }

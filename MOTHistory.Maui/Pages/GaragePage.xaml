@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:models="clr-namespace:MOTHistory.Maui.Models"
+             x:Class="MOTHistory.Maui.Pages.GaragePage"
+             Title="My Garage"
+             BackgroundColor="{StaticResource BackgroundColor}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,16,16,32" Spacing="16">
+
+            <!-- Empty state -->
+            <VerticalStackLayout x:Name="EmptyStateLayout"
+                                 IsVisible="True"
+                                 VerticalOptions="Center"
+                                 HorizontalOptions="Center"
+                                 Spacing="12"
+                                 Margin="20,60,20,0">
+                <Label Text="No saved vehicles yet."
+                       FontSize="17"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource TextPrimary}"
+                       HorizontalTextAlignment="Center" />
+                <Label Text="Search for a vehicle and tap Save to Garage to add it here."
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondary}"
+                       HorizontalTextAlignment="Center"
+                       LineBreakMode="WordWrap" />
+            </VerticalStackLayout>
+
+            <!-- Vehicle list (populated from code-behind) -->
+            <VerticalStackLayout x:Name="VehicleListLayout"
+                                 IsVisible="False"
+                                 Spacing="10" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>

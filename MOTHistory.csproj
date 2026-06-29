@@ -7,4 +7,12 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <!-- Exclude the MAUI project subtree from this project's implicit compile globs -->
+  <ItemGroup>
+    <Compile Remove="MOTHistory.Maui\**" />
+    <Content Remove="MOTHistory.Maui\**" />
+    <EmbeddedResource Remove="MOTHistory.Maui\**" />
+    <None Remove="MOTHistory.Maui\**" />
+  </ItemGroup>
+
 </Project>

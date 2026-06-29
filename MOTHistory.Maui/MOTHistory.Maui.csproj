@@ -32,7 +32,7 @@
 
 	<PropertyGroup Condition="'$(TargetFramework)'=='net10.0-ios'">
 		<CodesignKey>Apple Development: Created via API (CZ9757WG2G)</CodesignKey>
-		<CodesignProvision>VS: WildCard Development</CodesignProvision>
+		<CodesignProvision>VS: com.mikekennedy.mothistory Development</CodesignProvision>
 	</PropertyGroup>
 
 	<ItemGroup>
