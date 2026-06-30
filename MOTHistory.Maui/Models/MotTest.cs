@@ -33,4 +33,10 @@ public class MotTest
             return string.Equals(OdometerUnit, "km", StringComparison.OrdinalIgnoreCase) ? m * 0.621371 : m;
         }
     }
+
+    public int DaysUntilExpiry =>
+        ExpiryDate.HasValue ? (int)(ExpiryDate.Value.Date - DateTime.Today).TotalDays : int.MaxValue;
+
+    public bool IsExpiryUrgent => ExpiryDate.HasValue && DaysUntilExpiry is >= 0 and <= 14;
+    public bool IsExpiryExpired => ExpiryDate.HasValue && DaysUntilExpiry < 0;
 }

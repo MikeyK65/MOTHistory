@@ -77,11 +77,54 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Actions -->
-            <Button Text="Save Settings"
+            <!-- Save button -->
+            <Button x:Name="SaveButton"
+                    Text="Save Settings"
                     Clicked="OnSaveClicked"
                     Style="{StaticResource PrimaryButton}" />
 
+            <!-- Saving spinner -->
+            <VerticalStackLayout x:Name="SavingLayout"
+                                 IsVisible="False"
+                                 Spacing="8"
+                                 HorizontalOptions="Center">
+                <ActivityIndicator x:Name="SaveIndicator"
+                                   IsRunning="False"
+                                   Color="{StaticResource PrimaryColor}"
+                                   HeightRequest="36"
+                                   WidthRequest="36"
+                                   HorizontalOptions="Center" />
+                <Label Text="Saving..."
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondary}"
+                       HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
+
+            <!-- Status card (success or error) -->
+            <Border x:Name="StatusCard"
+                    IsVisible="False"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 12"
+                    Padding="16,14">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Label x:Name="StatusIcon"
+                           Grid.Column="0"
+                           FontSize="22"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center" />
+                    <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                        <Label x:Name="StatusTitle"
+                               FontSize="15"
+                               FontAttributes="Bold" />
+                        <Label x:Name="StatusDetail"
+                               FontSize="13"
+                               LineBreakMode="WordWrap"
+                               IsVisible="False" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- Clear credentials -->
             <Button Text="Clear All Credentials"
                     Clicked="OnClearClicked"
                     BackgroundColor="Transparent"
@@ -92,13 +135,6 @@
                     HeightRequest="50"
                     FontSize="17"
                     HorizontalOptions="Fill" />
-
-            <!-- Status message -->
-            <Label x:Name="StatusLabel"
-                   IsVisible="False"
-                   HorizontalTextAlignment="Center"
-                   FontSize="14"
-                   Margin="0,4" />
 
         </VerticalStackLayout>
     </ScrollView>

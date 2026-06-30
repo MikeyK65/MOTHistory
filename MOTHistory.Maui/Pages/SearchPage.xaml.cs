@@ -150,6 +150,9 @@ public partial class SearchPage : ContentPage
 
         RefreshSaveButton();
 
+        // Urgent expiry banner — find the current valid MOT expiry
+        ShowUrgentBanner(_currentTests);
+
         // Results list — built programmatically so tap gestures work and text never clips
         var count = _currentTests.Count;
         ResultsHeaderLabel.Text = $"Results for {reg}  ·  {count} test{(count == 1 ? "" : "s")}";
@@ -173,6 +176,35 @@ public partial class SearchPage : ContentPage
         BuildDefectTrends(_currentTests);
 
         ResultsSection.IsVisible = true;
+    }
+
+    private void ShowUrgentBanner(List<MotTest> tests)
+    {
+        // Use the latest expiry date across all tests (represents current MOT validity)
+        var latestExpiry = tests
+            .Where(t => t.ExpiryDate.HasValue)
+            .OrderByDescending(t => t.ExpiryDate)
+            .FirstOrDefault();
+
+        if (latestExpiry == null || !latestExpiry.IsExpiryUrgent)
+        {
+            UrgentExpiryBanner.IsVisible = false;
+            return;
+        }
+
+        var days = latestExpiry.DaysUntilExpiry;
+        string title = days switch
+        {
+            0 => "MOT EXPIRES TODAY",
+            1 => "MOT EXPIRES TOMORROW",
+            _ => $"MOT EXPIRES IN {days} DAYS"
+        };
+        UrgentExpiryTitle.Text = title;
+        UrgentExpirySubtitle.Text = $"Book your test before {latestExpiry.ExpiryDate!.Value:dddd d MMMM yyyy}";
+        UrgentExpiryBanner.BackgroundColor = days <= 7
+            ? Color.FromArgb("#FF3B30")
+            : Color.FromArgb("#FF9500");
+        UrgentExpiryBanner.IsVisible = true;
     }
 
     private void BuildTestCards(List<MotTest> tests)
@@ -299,6 +331,42 @@ public partial class SearchPage : ContentPage
         };
         stack.Children.Add(hint);
 
+        // Wrap in a container so an urgent strip can be prepended inside the rounded card
+        View cardContent = stack;
+        if (test.IsExpiryUrgent)
+        {
+            var days = test.DaysUntilExpiry;
+            var urgentText = days switch
+            {
+                0 => "MOT EXPIRES TODAY",
+                1 => "MOT EXPIRES TOMORROW",
+                _ => $"MOT EXPIRES IN {days} DAYS"
+            };
+            var stripColor = days <= 7 ? Color.FromArgb("#FF3B30") : Color.FromArgb("#FF9500");
+
+            var strip = new Grid
+            {
+                BackgroundColor = stripColor,
+                Padding = new Thickness(16, 9),
+                Children =
+                {
+                    new Label
+                    {
+                        Text = urgentText,
+                        FontSize = 13,
+                        FontAttributes = FontAttributes.Bold,
+                        TextColor = Colors.White,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    }
+                }
+            };
+
+            var container = new VerticalStackLayout { Spacing = 0 };
+            container.Children.Add(strip);
+            container.Children.Add(stack);
+            cardContent = container;
+        }
+
         var card = new Border
         {
             BackgroundColor = Colors.White,
@@ -306,7 +374,7 @@ public partial class SearchPage : ContentPage
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 14 },
             Shadow = new Shadow { Brush = Brush.Black, Offset = new Point(0, 2), Radius = 8, Opacity = 0.07f },
             Margin = new Thickness(16, 6),
-            Content = stack
+            Content = cardContent
         };
 
         var tap = new TapGestureRecognizer();

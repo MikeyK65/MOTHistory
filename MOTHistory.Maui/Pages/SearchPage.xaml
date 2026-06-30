@@ -17,11 +17,11 @@
                 </OnPlatform>
             </Grid.Padding>
             <VerticalStackLayout Spacing="4">
-                <Label Text="MOT History"
+                <Label Text="Reg Trace UK"
                        FontSize="30"
                        FontAttributes="Bold"
                        TextColor="White" />
-                <Label Text="UK vehicle MOT test records"
+                <Label Text="UK vehicle MOT history"
                        FontSize="15"
                        TextColor="#FFFFFFCC" />
             </VerticalStackLayout>
@@ -119,6 +119,28 @@
 
                 <!-- Results area (shown after successful search) -->
                 <VerticalStackLayout x:Name="ResultsSection" IsVisible="False" Spacing="0">
+
+                    <!-- Urgent MOT expiry warning -->
+                    <Border x:Name="UrgentExpiryBanner"
+                            IsVisible="False"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 14"
+                            Margin="16,16,16,0"
+                            Padding="16,14">
+                        <VerticalStackLayout Spacing="6">
+                            <Label x:Name="UrgentExpiryTitle"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalTextAlignment="Center" />
+                            <Label x:Name="UrgentExpirySubtitle"
+                                   FontSize="14"
+                                   TextColor="White"
+                                   Opacity="0.92"
+                                   HorizontalTextAlignment="Center"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Border>
 
                     <!-- Vehicle info card -->
                     <Border x:Name="VehicleInfoCard"

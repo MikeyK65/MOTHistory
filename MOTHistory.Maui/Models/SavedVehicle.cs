@@ -40,7 +40,11 @@ public class SavedVehicle
         }
     }
 
+    public bool ReminderEnabled { get; set; } = false;
+
     public bool IsExpired => MotExpiryDate.HasValue && DaysUntilExpiry < 0;
-    public bool IsExpiringSoon => !IsExpired && MotExpiryDate.HasValue && DaysUntilExpiry <= 30;
-    public bool IsValid => !IsExpired && !IsExpiringSoon;
+    public bool IsUrgent => !IsExpired && MotExpiryDate.HasValue && DaysUntilExpiry <= 14;
+    public bool IsExpiringSoon => !IsExpired && !IsUrgent && MotExpiryDate.HasValue && DaysUntilExpiry <= 30;
+    public bool IsValid => !IsExpired && !IsUrgent && !IsExpiringSoon;
+    public bool CanSetReminder => MotExpiryDate.HasValue && !IsExpired;
 }

@@ -7,7 +7,6 @@ public partial class SettingsPage : ContentPage
 {
     private readonly DVSASettingsService _settingsService;
 
-    // Parameterless ctor for Shell DataTemplate (Activator.CreateInstance path)
     public SettingsPage() : this(IPlatformApplication.Current!.Services.GetRequiredService<DVSASettingsService>()) { }
 
     public SettingsPage(DVSASettingsService settingsService)
@@ -52,14 +51,24 @@ public partial class SettingsPage : ContentPage
             TokenUrl = TokenUrlEntry.Text?.Trim(),
         };
 
+        SetSavingState(true);
+
         try
         {
-            await _settingsService.SaveAsync(settings);
-            ShowStatus("Settings saved.", isSuccess: true);
+            // Run the save alongside a minimum delay so the spinner is always visible
+            await Task.WhenAll(
+                _settingsService.SaveAsync(settings),
+                Task.Delay(600)
+            );
+            ShowStatus(success: true, title: "Settings saved", detail: null);
         }
         catch (Exception ex)
         {
-            ShowStatus($"Save failed: {ex.Message}", isSuccess: false);
+            ShowStatus(success: false, title: "Save failed", detail: ex.Message);
+        }
+        finally
+        {
+            SetSavingState(false);
         }
     }
 
@@ -79,18 +88,43 @@ public partial class SettingsPage : ContentPage
         BaseUrlEntry.Text = "";
         ScopeUrlEntry.Text = "";
         TokenUrlEntry.Text = "";
-        ShowStatus("Credentials cleared.", isSuccess: true);
+        ShowStatus(success: true, title: "Credentials cleared", detail: null);
     }
 
-    private void ShowStatus(string message, bool isSuccess)
+    private void SetSavingState(bool saving)
     {
-        StatusLabel.Text = message;
-        StatusLabel.TextColor = isSuccess
-            ? (Color)Application.Current!.Resources["PassColor"]
-            : (Color)Application.Current!.Resources["FailColor"];
-        StatusLabel.IsVisible = true;
+        SaveButton.IsEnabled = !saving;
+        SaveButton.Text = saving ? "Saving..." : "Save Settings";
+        SavingLayout.IsVisible = saving;
+        SaveIndicator.IsRunning = saving;
+        if (saving) StatusCard.IsVisible = false;
+    }
 
-        _ = Task.Delay(3000).ContinueWith(_ =>
-            MainThread.BeginInvokeOnMainThread(() => StatusLabel.IsVisible = false));
+    private async void ShowStatus(bool success, string title, string? detail)
+    {
+        var bgColor = success ? Color.FromArgb("#E8F8EC") : Color.FromArgb("#FFF0EF");
+        var textColor = success ? Color.FromArgb("#1A7A32") : Color.FromArgb("#CC1900");
+
+        StatusCard.BackgroundColor = bgColor;
+        StatusIcon.Text = success ? "✓" : "!";
+        StatusIcon.TextColor = textColor;
+        StatusTitle.Text = title;
+        StatusTitle.TextColor = textColor;
+
+        if (!string.IsNullOrWhiteSpace(detail))
+        {
+            StatusDetail.Text = detail;
+            StatusDetail.TextColor = textColor;
+            StatusDetail.IsVisible = true;
+        }
+        else
+        {
+            StatusDetail.IsVisible = false;
+        }
+
+        StatusCard.IsVisible = true;
+
+        await Task.Delay(4000);
+        StatusCard.IsVisible = false;
     }
 }
