@@ -142,6 +142,39 @@
                         </VerticalStackLayout>
                     </Border>
 
+                    <!-- Outstanding manufacturer recall -->
+                    <Border x:Name="RecallBanner"
+                            IsVisible="False"
+                            BackgroundColor="#FFF0EF"
+                            Stroke="{StaticResource FailColor}"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 14"
+                            Margin="16,16,16,0"
+                            Padding="16,14">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="OUTSTANDING SAFETY RECALL"
+                                   FontSize="14"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource FailColor}" />
+                            <Label Text="DVSA records an unresolved manufacturer recall for this vehicle. Contact a franchised dealer — recall work is carried out free of charge."
+                                   FontSize="13"
+                                   TextColor="{StaticResource FailColor}"
+                                   LineBreakMode="WordWrap" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Mileage anomaly warning -->
+                    <Border x:Name="MileageWarningBanner"
+                            IsVisible="False"
+                            BackgroundColor="#FFF0EF"
+                            Stroke="{StaticResource FailColor}"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 14"
+                            Margin="16,16,16,0"
+                            Padding="16,14">
+                        <VerticalStackLayout x:Name="MileageWarningContent" Spacing="4" />
+                    </Border>
+
                     <!-- Vehicle info card -->
                     <Border x:Name="VehicleInfoCard"
                             Style="{StaticResource CardBorder}"
@@ -159,6 +192,16 @@
                                    FontSize="13"
                                    TextColor="{StaticResource TextSecondary}" />
                         </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Tax, VED and emissions card (DVLA VES — only shown when a key is set) -->
+                    <Border x:Name="TaxCard"
+                            Style="{StaticResource CardBorder}"
+                            Margin="16,10,16,0"
+                            IsVisible="False">
+                        <VerticalStackLayout x:Name="TaxCardContent"
+                                             Padding="16"
+                                             Spacing="8" />
                     </Border>
 
                     <!-- Save / Share row -->
@@ -205,6 +248,11 @@
                             <GraphicsView x:Name="MileageChart"
                                           HeightRequest="180"
                                           HorizontalOptions="Fill" />
+                            <Label x:Name="MileageSummaryLabel"
+                                   IsVisible="False"
+                                   FontSize="13"
+                                   TextColor="{StaticResource TextSecondary}"
+                                   LineBreakMode="WordWrap" />
                         </VerticalStackLayout>
                     </Border>
 

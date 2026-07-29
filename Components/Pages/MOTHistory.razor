@@ -1,8 +1,12 @@
 @using System.Text.Json
+@* global:: is required here — this component's own class name (MOTHistory) shadows the
+   MOTHistory namespace root, so an unqualified "MOTHistory.Shared" resolves to the type. *@
+@using global::MOTHistory.Shared
 
 @page "/"
 @rendermode InteractiveServer
 @inject DVSAApiService MotService
+@inject DVLAApiService DvlaService
 
 <PageTitle>MOT History Checker</PageTitle>
 
@@ -36,6 +40,126 @@
     <div class="alert alert-danger" role="alert">@error</div>
 }
 
+@if (hasRecall)
+{
+    <div class="alert alert-danger" role="alert">
+        <strong>Outstanding safety recall.</strong>
+        DVSA records an unresolved manufacturer recall for this vehicle. Contact a franchised
+        dealer — recall work is carried out free of charge.
+    </div>
+}
+
+@if (mileageReport.HasAnomalies)
+{
+    <div class="alert @(mileageReport.HasRollback ? "alert-danger" : "alert-warning")" role="alert">
+        <strong>@(mileageReport.HasRollback ? "Mileage discrepancy." : "Unusual mileage.")</strong>
+        @if (mileageReport.HasRollback)
+        {
+            <span>
+                The recorded odometer reading goes down between tests. This can indicate a replaced
+                instrument cluster, a recording error, or that the vehicle has been clocked.
+            </span>
+        }
+        else
+        {
+            <span>The mileage recorded between tests is unusually high for the time elapsed.</span>
+        }
+        <ul class="anomaly-list">
+            @foreach (var anomaly in mileageReport.Anomalies)
+            {
+                <li>@anomaly.Description</li>
+            }
+        </ul>
+    </div>
+}
+
+@if (taxInfo is not null)
+{
+    var ved = VedCalculator.Estimate(taxInfo);
+    var ulez = UlezChecker.Check(taxInfo);
+
+    <section class="card vehicle-facts">
+        <h2 class="facts-title">Tax &amp; emissions</h2>
+
+        <div class="fact-row">
+            <span class="fact-label">Tax status</span>
+            <span class="fact-value">
+                <span class="badge @TaxBadgeClass(taxInfo)">@taxInfo.TaxStatusDisplay</span>
+                @if (taxInfo.TaxDueDate is not null)
+                {
+                    <span class="fact-sub @(taxInfo.IsTaxOverdue ? "fact-sub-danger" : taxInfo.IsTaxDueSoon ? "fact-sub-warning" : "")">
+                        @taxInfo.TaxDueDisplay
+                    </span>
+                }
+            </span>
+        </div>
+
+        @if (ved.HasRate)
+        {
+            <div class="fact-row">
+                <span class="fact-label">Estimated road tax</span>
+                <span class="fact-value">
+                    @ved.RateDisplay/yr
+                    @if (ved.Band is not null)
+                    {
+                        <span class="fact-sub">@ved.Band</span>
+                    }
+                </span>
+            </div>
+            <p class="fact-note">
+                @ved.Basis. @VedCalculator.RateTableTaxYear rates — verify at
+                <a href="https://www.gov.uk/vehicle-tax-rate-tables" target="_blank" rel="noopener">gov.uk</a>.
+                @ved.Caveat
+            </p>
+        }
+
+        @if (!string.IsNullOrEmpty(taxInfo.Co2Display) || !string.IsNullOrEmpty(taxInfo.EuroStatusDisplay))
+        {
+            <div class="fact-row">
+                <span class="fact-label">Emissions</span>
+                <span class="fact-value">
+                    @string.Join(" · ", new[] { taxInfo.Co2Display, taxInfo.EuroStatusDisplay }.Where(s => !string.IsNullOrEmpty(s)))
+                </span>
+            </div>
+        }
+
+        @if (ulez.Verdict != UlezVerdict.Unknown)
+        {
+            <div class="fact-row">
+                <span class="fact-label">ULEZ</span>
+                <span class="fact-value @(ulez.Verdict == UlezVerdict.Compliant ? "fact-value-good" : "fact-value-bad")">
+                    @ulez.VerdictDisplay
+                </span>
+            </div>
+            <p class="fact-note">
+                @ulez.Reason Estimate only — confirm at
+                <a href="https://tfl.gov.uk/modes/driving/check-your-vehicle" target="_blank" rel="noopener">tfl.gov.uk</a>.
+            </p>
+        }
+
+        @if (taxInfo.MarkedForExport)
+        {
+            <div class="fact-row">
+                <span class="fact-label">Export marker</span>
+                <span class="fact-value fact-value-bad">Marked for export</span>
+            </div>
+        }
+
+        @if (taxInfo.V5CRecentlyIssued)
+        {
+            <div class="fact-row">
+                <span class="fact-label">Last V5C issued</span>
+                <span class="fact-value">@taxInfo.DateOfLastV5CIssued!.Value.ToString("d MMM yyyy")</span>
+            </div>
+            <p class="fact-note">A recently issued logbook often means the vehicle has changed keeper.</p>
+        }
+    </section>
+}
+else if (taxError is not null)
+{
+    <div class="alert alert-warning" role="alert">@taxError</div>
+}
+
 @if (motTests != null)
 {
     @if (motTests.Count == 0)
@@ -49,6 +173,13 @@
                 <h2>Results for <span class="plate-chip">@registration</span></h2>
                 <span class="results-count">@motTests.Count test@(motTests.Count == 1 ? "" : "s")</span>
             </div>
+            @if (mileageReport.AverageAnnualDisplay is { } averageMileage)
+            {
+                <p class="mileage-summary">
+                    Averages <strong>@averageMileage</strong> — @mileageReport.UsageComparison of
+                    @MileageAnalysis.UkAverageAnnualMiles.ToString("N0") miles/year.
+                </p>
+            }
             <ul class="timeline">
                 @foreach (var test in motTests)
                 {
@@ -109,17 +240,43 @@
     private bool isLoading = false;
     private List<MotTest>? motTests;
 
+    private VehicleTaxInfo? taxInfo;
+    private string? taxError;
+    private bool hasRecall;
+    private MileageReport mileageReport = MileageReport.Empty;
+
     private static string StatusClass(string result) =>
         result.Contains("PASS", StringComparison.OrdinalIgnoreCase) ? "status-pass" : "status-fail";
+
+    private static string TaxBadgeClass(VehicleTaxInfo tax) =>
+        tax.IsTaxed ? "status-pass" : tax.IsSorn ? "status-warning" : "status-fail";
 
     private async Task CheckMotHistory()
     {
         error = null;
         motTests = null;
+        taxInfo = null;
+        taxError = null;
+        hasRecall = false;
+        mileageReport = MileageReport.Empty;
         isLoading = true;
         try
         {
-            var (json, apiError) = await MotService.GetMotHistoryAsync(registration);
+            // MOT history and DVLA tax data are independent lookups — run them together so
+            // adding the second call doesn't slow the search down.
+            var motTask = MotService.GetMotHistoryAsync(registration);
+            var dvlaTask = DvlaService.GetVehicleAsync(registration);
+            await Task.WhenAll(motTask, dvlaTask);
+
+            var (json, apiError) = await motTask;
+            var (dvlaJson, dvlaError) = await dvlaTask;
+
+            taxError = dvlaError;
+            if (dvlaJson is not null)
+            {
+                taxInfo = VehicleTaxInfo.Parse(dvlaJson.Value, NormaliseRegistration(registration));
+            }
+
             if (apiError is not null)
             {
                 error = apiError;
@@ -145,6 +302,15 @@
             else
             {
                 vehicle = json.Value;
+            }
+
+            // DVSA reports this as "Yes"/"No"/"Unknown"; accept a JSON boolean too in case
+            // the representation changes.
+            if (vehicle.TryGetProperty("hasOutstandingRecall", out var recall))
+            {
+                hasRecall = recall.ValueKind == JsonValueKind.True
+                    || (recall.ValueKind == JsonValueKind.String
+                        && string.Equals(recall.GetString(), "Yes", StringComparison.OrdinalIgnoreCase));
             }
 
             motTests = new List<MotTest>();
@@ -176,6 +342,11 @@
                     }
                     motTests.Add(test);
                 }
+
+                mileageReport = MileageAnalysis.Analyse(
+                    motTests
+                        .Where(t => t.OdometerMiles > 0)
+                        .Select(t => new MileageReading(t.TestDate, t.OdometerMiles)));
             }
             else
             {
@@ -192,6 +363,9 @@
         }
     }
 
+    private static string NormaliseRegistration(string input) =>
+        new string(input.Trim().ToUpperInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
+
     public class MotTest
     {
         public DateTime TestDate { get; set; }
@@ -201,5 +375,17 @@
         public string OdometerUnit { get; set; } = "";
         public List<string> Failures { get; set; } = new();
         public List<string> Advisories { get; set; } = new();
+
+        /// <summary>Odometer reading normalised to miles, or 0 when unreadable.</summary>
+        public double OdometerMiles
+        {
+            get
+            {
+                if (!double.TryParse(OdometerValue, out var m) || m <= 0) return 0;
+                return string.Equals(OdometerUnit, "km", StringComparison.OrdinalIgnoreCase)
+                    ? m * 0.621371
+                    : m;
+            }
+        }
     }
 }

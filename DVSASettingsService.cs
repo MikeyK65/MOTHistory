@@ -64,7 +64,9 @@ public class DVSASettingsService
             ClientId = config["DVSAApi:ClientId"],
             ClientSecret = config["DVSAApi:ClientSecret"],
             ScopeUrl = config["DVSAApi:ScopeUrl"],
-            TokenUrl = config["DVSAApi:TokenUrl"]
+            TokenUrl = config["DVSAApi:TokenUrl"],
+            DvlaApiKey = config["DVLAApi:ApiKey"],
+            DvlaBaseUrl = config["DVLAApi:BaseUrl"]
         };
     }
 
@@ -75,6 +77,8 @@ public class DVSASettingsService
         ClientId = s.ClientId,
         ClientSecret = s.ClientSecret,
         ScopeUrl = s.ScopeUrl,
-        TokenUrl = s.TokenUrl
+        TokenUrl = s.TokenUrl,
+        DvlaApiKey = s.DvlaApiKey,
+        DvlaBaseUrl = s.DvlaBaseUrl
     };
 }

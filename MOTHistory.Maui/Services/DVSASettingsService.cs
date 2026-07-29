@@ -15,6 +15,8 @@ public class DVSASettingsService
     private const string KeyBaseUrl = "dvsa_base_url";
     private const string KeyScopeUrl = "dvsa_scope_url";
     private const string KeyTokenUrl = "dvsa_token_url";
+    private const string KeyDvlaApiKey = "dvla_api_key";
+    private const string KeyDvlaBaseUrl = "dvla_base_url";
 
     public Task<DVSASettings> GetAsync()
     {
@@ -26,6 +28,8 @@ public class DVSASettingsService
             BaseUrl = Preferences.Default.Get(KeyBaseUrl, ""),
             ScopeUrl = Preferences.Default.Get(KeyScopeUrl, ""),
             TokenUrl = Preferences.Default.Get(KeyTokenUrl, ""),
+            DvlaApiKey = Preferences.Default.Get(KeyDvlaApiKey, ""),
+            DvlaBaseUrl = Preferences.Default.Get(KeyDvlaBaseUrl, ""),
         };
         return Task.FromResult(settings);
     }
@@ -38,6 +42,8 @@ public class DVSASettingsService
         Preferences.Default.Set(KeyBaseUrl, settings.BaseUrl ?? "");
         Preferences.Default.Set(KeyScopeUrl, settings.ScopeUrl ?? "");
         Preferences.Default.Set(KeyTokenUrl, settings.TokenUrl ?? "");
+        Preferences.Default.Set(KeyDvlaApiKey, settings.DvlaApiKey ?? "");
+        Preferences.Default.Set(KeyDvlaBaseUrl, settings.DvlaBaseUrl ?? "");
         return Task.CompletedTask;
     }
 }

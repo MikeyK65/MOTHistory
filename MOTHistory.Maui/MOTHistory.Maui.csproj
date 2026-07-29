@@ -52,6 +52,12 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+	<!-- Pure logic shared with the Blazor web app (VED rates, ULEZ rules, mileage analysis).
+	     Linked rather than duplicated so the rate tables have a single source of truth. -->
+	<ItemGroup>
+		<Compile Include="..\Shared\*.cs" LinkBase="Shared" />
+	</ItemGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Essentials" Version="$(MauiVersion)" />

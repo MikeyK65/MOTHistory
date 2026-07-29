@@ -8,11 +8,15 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <Label Text="Enter your DVSA API credentials. These are stored on this device and never shared."
+            <Label Text="Enter your API credentials. These are stored on this device and never shared."
                    FontSize="14"
                    TextColor="{StaticResource TextSecondary}"
                    LineBreakMode="WordWrap"
                    Margin="0,4,0,4" />
+
+            <Label Text="DVSA — MOT HISTORY"
+                   Style="{StaticResource FormLabel}"
+                   Margin="4,4,0,0" />
 
             <!-- Credentials card -->
             <Border StrokeShape="RoundRectangle 14"
@@ -71,6 +75,40 @@
                     <Label Text="Token URL" Style="{StaticResource FormLabel}" />
                     <Entry x:Name="TokenUrlEntry"
                            Placeholder="https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"
+                           Keyboard="Url"
+                           Style="{StaticResource StandardEntry}" />
+
+                </VerticalStackLayout>
+            </Border>
+
+            <Label Text="DVLA — TAX &amp; EMISSIONS (OPTIONAL)"
+                   Style="{StaticResource FormLabel}"
+                   Margin="4,8,0,0" />
+
+            <Label Text="Adds tax status, tax due date, CO2 and Euro emissions data. Get a free key from the DVLA Vehicle Enquiry Service developer portal. Leave blank to use MOT data only."
+                   FontSize="13"
+                   TextColor="{StaticResource TextSecondary}"
+                   LineBreakMode="WordWrap"
+                   Margin="4,0,0,0" />
+
+            <!-- DVLA card -->
+            <Border StrokeShape="RoundRectangle 14"
+                    StrokeThickness="0"
+                    BackgroundColor="{StaticResource SurfaceColor}"
+                    Padding="16">
+                <VerticalStackLayout Spacing="14">
+
+                    <Label Text="DVLA API Key" Style="{StaticResource FormLabel}" />
+                    <Entry x:Name="DvlaApiKeyEntry"
+                           IsPassword="True"
+                           Placeholder="Your DVLA VES API key"
+                           Style="{StaticResource StandardEntry}" />
+
+                    <BoxView HeightRequest="1" BackgroundColor="{StaticResource SeparatorColor}" Margin="0,2" />
+
+                    <Label Text="DVLA Base URL" Style="{StaticResource FormLabel}" />
+                    <Entry x:Name="DvlaBaseUrlEntry"
+                           Placeholder="https://driver-vehicle-licensing.api.gov.uk"
                            Keyboard="Url"
                            Style="{StaticResource StandardEntry}" />
 

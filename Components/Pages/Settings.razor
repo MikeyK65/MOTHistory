@@ -5,13 +5,13 @@
 <PageTitle>Settings</PageTitle>
 
 <section class="page-header">
-    <h1>DVSA API Settings</h1>
-    <p class="page-subtitle">Credentials used to call the DVSA MOT History API. Stored locally on this machine, outside the application folder.</p>
+    <h1>API Settings</h1>
+    <p class="page-subtitle">Credentials used to call the DVSA MOT History and DVLA Vehicle Enquiry APIs. Stored locally on this machine, outside the application folder.</p>
 </section>
 
 <EditForm Model="model" OnSubmit="Save" class="card settings-form">
     <fieldset class="form-section">
-        <legend>Credentials</legend>
+        <legend>DVSA credentials</legend>
 
         <div class="form-field">
             <label for="apiKey" class="form-label">API key</label>
@@ -36,7 +36,7 @@
     </fieldset>
 
     <fieldset class="form-section">
-        <legend>Endpoints</legend>
+        <legend>DVSA endpoints</legend>
 
         <div class="form-field">
             <label for="baseUrl" class="form-label">Base URL</label>
@@ -57,6 +57,29 @@
         </div>
     </fieldset>
 
+    <fieldset class="form-section">
+        <legend>DVLA Vehicle Enquiry Service (optional)</legend>
+        <p class="form-help">
+            Adds tax status, tax due date, CO<sub>2</sub> and Euro emissions data, which the MOT
+            History API does not return. Get a free key from the DVLA developer portal. Leave the
+            key blank to run on MOT data alone.
+        </p>
+
+        <div class="form-field">
+            <label for="dvlaApiKey" class="form-label">DVLA API key</label>
+            <div class="input-group">
+                <input id="dvlaApiKey" type="@(showDvlaApiKey ? "text" : "password")" class="input" @bind="model.DvlaApiKey" autocomplete="off" />
+                <button type="button" class="input-group-btn" @onclick="() => showDvlaApiKey = !showDvlaApiKey">@(showDvlaApiKey ? "Hide" : "Show")</button>
+            </div>
+        </div>
+
+        <div class="form-field">
+            <label for="dvlaBaseUrl" class="form-label">DVLA base URL</label>
+            <input id="dvlaBaseUrl" class="input" @bind="model.DvlaBaseUrl" placeholder="@DVLAApiService.DefaultBaseUrl" />
+            <p class="form-help">Leave blank to use the production endpoint.</p>
+        </div>
+    </fieldset>
+
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save settings</button>
         <a href="/" class="btn btn-ghost">Back to MOT history checker</a>
@@ -73,6 +96,7 @@
     private bool saved;
     private bool showApiKey;
     private bool showClientSecret;
+    private bool showDvlaApiKey;
 
     protected override void OnInitialized()
     {

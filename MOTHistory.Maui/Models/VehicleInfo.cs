@@ -10,6 +10,20 @@ public class VehicleInfo
     public string EngineSize { get; set; } = "";
     public DateTime? FirstUsedDate { get; set; }
 
+    /// <summary>
+    /// DVSA's manufacturer-recall marker. The MOT History API reports this as a string —
+    /// "Yes", "No", "Unknown" or "Unclassified" — so it is kept verbatim here.
+    /// </summary>
+    public string OutstandingRecall { get; set; } = "";
+
+    public bool HasOutstandingRecall =>
+        string.Equals(OutstandingRecall, "Yes", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>True when DVSA explicitly confirms there is no outstanding recall.</summary>
+    public bool RecallChecked =>
+        string.Equals(OutstandingRecall, "Yes", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(OutstandingRecall, "No", StringComparison.OrdinalIgnoreCase);
+
     public string MakeModel => $"{Make} {Model}".Trim();
 
     public string ColourFuelEngine

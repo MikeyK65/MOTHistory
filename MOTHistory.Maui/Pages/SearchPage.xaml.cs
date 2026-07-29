@@ -2,12 +2,14 @@ using System.Text;
 using System.Text.Json;
 using MOTHistory.Maui.Models;
 using MOTHistory.Maui.Services;
+using MOTHistory.Shared;
 
 namespace MOTHistory.Maui.Pages;
 
 public partial class SearchPage : ContentPage
 {
     private readonly DVSAApiService _apiService;
+    private readonly DVLAApiService _dvlaService;
     private readonly RecentSearchesService _recentSearches;
     private readonly SavedVehiclesService _savedVehicles;
     private readonly OfflineCacheService _offlineCache;
@@ -15,10 +17,14 @@ public partial class SearchPage : ContentPage
 
     private List<MotTest> _currentTests = [];
     private VehicleInfo? _currentVehicle;
+    private VehicleTaxInfo? _currentTaxInfo;
+    private string? _currentTaxError;
+    private MileageReport _currentMileage = MileageReport.Empty;
     private string _currentReg = "";
 
     public SearchPage()
         : this(IPlatformApplication.Current!.Services.GetRequiredService<DVSAApiService>(),
+               IPlatformApplication.Current!.Services.GetRequiredService<DVLAApiService>(),
                IPlatformApplication.Current!.Services.GetRequiredService<RecentSearchesService>(),
                IPlatformApplication.Current!.Services.GetRequiredService<SavedVehiclesService>(),
                IPlatformApplication.Current!.Services.GetRequiredService<OfflineCacheService>(),
@@ -26,6 +32,7 @@ public partial class SearchPage : ContentPage
 
     public SearchPage(
         DVSAApiService apiService,
+        DVLAApiService dvlaService,
         RecentSearchesService recentSearches,
         SavedVehiclesService savedVehicles,
         OfflineCacheService offlineCache,
@@ -33,6 +40,7 @@ public partial class SearchPage : ContentPage
     {
         InitializeComponent();
         _apiService = apiService;
+        _dvlaService = dvlaService;
         _recentSearches = recentSearches;
         _savedVehicles = savedVehicles;
         _offlineCache = offlineCache;
@@ -72,7 +80,14 @@ public partial class SearchPage : ContentPage
 
         try
         {
-            var (json, error) = await _apiService.GetMotHistoryAsync(reg);
+            // MOT history and DVLA tax data are independent lookups — run them together so
+            // adding the second call doesn't slow the search down.
+            var motTask = _apiService.GetMotHistoryAsync(reg);
+            var dvlaTask = _dvlaService.GetVehicleAsync(reg);
+            await Task.WhenAll(motTask, dvlaTask);
+
+            var (json, error) = await motTask;
+            ResolveTaxInfo(reg, await dvlaTask);
 
             if (json.HasValue)
             {
@@ -108,11 +123,47 @@ public partial class SearchPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Turns the DVLA lookup outcome into <see cref="_currentTaxInfo"/>, falling back to the
+    /// cached payload when the call fails so tax data survives going offline. A missing DVLA
+    /// key produces no data and no error — the app is fully usable on MOT data alone.
+    /// </summary>
+    private void ResolveTaxInfo(string reg, (JsonElement? Json, string? Error) result)
+    {
+        _currentTaxInfo = null;
+        _currentTaxError = result.Error;
+
+        if (result.Json.HasValue)
+        {
+            _offlineCache.Save(reg, result.Json.Value.GetRawText(), OfflineCacheService.DvlaKind);
+            _currentTaxInfo = VehicleTaxInfo.Parse(result.Json.Value, reg);
+            return;
+        }
+
+        var cached = _offlineCache.Load(reg, OfflineCacheService.DvlaKind);
+        if (cached is null) return;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(cached);
+            _currentTaxInfo = VehicleTaxInfo.Parse(doc.RootElement, reg);
+            if (_currentTaxInfo is not null) _currentTaxError = null;
+        }
+        catch
+        {
+            // Corrupt cache — leave tax data unavailable.
+        }
+    }
+
     private void ShowResults(JsonElement json, string reg, bool fromCache, DateTime? cachedAt = null)
     {
         _currentReg = reg;
         _currentVehicle = ParseVehicleInfo(json, reg);
         _currentTests = ParseTests(json);
+        _currentMileage = MileageAnalysis.Analyse(
+            _currentTests
+                .Where(t => t.OdometerMiles > 0)
+                .Select(t => new MileageReading(t.TestDate, t.OdometerMiles)));
 
         ErrorBorder.IsVisible = false;
         RecentSearchesSection.IsVisible = false;
@@ -130,12 +181,61 @@ public partial class SearchPage : ContentPage
 
         if (_currentTests.Count == 0)
         {
-            ResultsSection.IsVisible = false;
-            EmptyStateLayout.IsVisible = true;
+            ShowTaxOnlyResults();
             return;
         }
 
-        // Vehicle info
+        ShowVehicleInfoCard();
+        RefreshSaveButton();
+
+        // Urgent expiry banner — find the current valid MOT expiry
+        ShowUrgentBanner(_currentTests);
+
+        // Outstanding manufacturer recall (DVSA), mileage anomalies (derived), tax (DVLA)
+        RecallBanner.IsVisible = _currentVehicle?.HasOutstandingRecall == true;
+        BuildMileageWarning(_currentMileage);
+        BuildTaxCard(_currentTaxInfo, _currentTaxError);
+
+        // Results list — built programmatically so tap gestures work and text never clips
+        var count = _currentTests.Count;
+        ResultsHeaderLabel.Text = $"Results for {reg}  ·  {count} test{(count == 1 ? "" : "s")}";
+        ResultsHeaderLabel.IsVisible = true;
+        BuildTestCards(_currentTests);
+
+        // Mileage chart
+        var chartPoints = _currentTests.Where(t => t.OdometerMiles > 0).ToList();
+        if (chartPoints.Count >= 2)
+        {
+            var drawable = new MileageChartDrawable { Tests = _currentTests };
+            MileageChart.Drawable = drawable;
+            MileageChart.Invalidate();
+            MileageChartCard.IsVisible = true;
+
+            if (_currentMileage.AverageAnnualDisplay is { } average)
+            {
+                MileageSummaryLabel.Text =
+                    $"Averages {average} — {_currentMileage.UsageComparison} " +
+                    $"of {MileageAnalysis.UkAverageAnnualMiles:N0} miles/year.";
+                MileageSummaryLabel.IsVisible = true;
+            }
+            else
+            {
+                MileageSummaryLabel.IsVisible = false;
+            }
+        }
+        else
+        {
+            MileageChartCard.IsVisible = false;
+        }
+
+        // Defect trends
+        BuildDefectTrends(_currentTests);
+
+        ResultsSection.IsVisible = true;
+    }
+
+    private void ShowVehicleInfoCard()
+    {
         if (_currentVehicle?.HasDetail == true)
         {
             VehicleMakeModelLabel.Text = _currentVehicle.MakeModel;
@@ -147,35 +247,29 @@ public partial class SearchPage : ContentPage
         {
             VehicleInfoCard.IsVisible = false;
         }
+    }
 
+    /// <summary>
+    /// A vehicle under three years old has no MOT tests but still has DVLA tax data, so
+    /// show what we do have rather than falling back to a bare "nothing found" state.
+    /// </summary>
+    private void ShowTaxOnlyResults()
+    {
+        EmptyStateLayout.IsVisible = true;
+
+        UrgentExpiryBanner.IsVisible = false;
+        MileageWarningBanner.IsVisible = false;
+        MileageChartCard.IsVisible = false;
+        DefectTrendsCard.IsVisible = false;
+        TestResultsList.Children.Clear();
+        ResultsHeaderLabel.IsVisible = false;
+
+        RecallBanner.IsVisible = _currentVehicle?.HasOutstandingRecall == true;
+        BuildTaxCard(_currentTaxInfo, _currentTaxError);
+        ShowVehicleInfoCard();
         RefreshSaveButton();
 
-        // Urgent expiry banner — find the current valid MOT expiry
-        ShowUrgentBanner(_currentTests);
-
-        // Results list — built programmatically so tap gestures work and text never clips
-        var count = _currentTests.Count;
-        ResultsHeaderLabel.Text = $"Results for {reg}  ·  {count} test{(count == 1 ? "" : "s")}";
-        BuildTestCards(_currentTests);
-
-        // Mileage chart
-        var chartPoints = _currentTests.Where(t => t.OdometerMiles > 0).ToList();
-        if (chartPoints.Count >= 2)
-        {
-            var drawable = new MileageChartDrawable { Tests = _currentTests };
-            MileageChart.Drawable = drawable;
-            MileageChart.Invalidate();
-            MileageChartCard.IsVisible = true;
-        }
-        else
-        {
-            MileageChartCard.IsVisible = false;
-        }
-
-        // Defect trends
-        BuildDefectTrends(_currentTests);
-
-        ResultsSection.IsVisible = true;
+        ResultsSection.IsVisible = TaxCard.IsVisible || VehicleInfoCard.IsVisible || RecallBanner.IsVisible;
     }
 
     private void ShowUrgentBanner(List<MotTest> tests)
@@ -406,6 +500,233 @@ public partial class SearchPage : ContentPage
             }
         };
 
+    /// <summary>
+    /// Surfaces odometer rollbacks and implausible jumps. A rollback is the classic
+    /// "clocking" signature, so it gets the stronger red treatment.
+    /// </summary>
+    private void BuildMileageWarning(MileageReport report)
+    {
+        if (!report.HasAnomalies)
+        {
+            MileageWarningBanner.IsVisible = false;
+            return;
+        }
+
+        var severe = report.HasRollback;
+        var accent = severe ? Color.FromArgb("#FF3B30") : Color.FromArgb("#FF9500");
+
+        MileageWarningBanner.BackgroundColor = severe ? Color.FromArgb("#FFF0EF") : Color.FromArgb("#FFF6E8");
+        MileageWarningBanner.Stroke = accent;
+
+        MileageWarningContent.Children.Clear();
+        MileageWarningContent.Children.Add(new Label
+        {
+            Text = severe ? "MILEAGE DISCREPANCY" : "UNUSUAL MILEAGE",
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = accent
+        });
+
+        MileageWarningContent.Children.Add(new Label
+        {
+            Text = severe
+                ? "The recorded odometer reading goes down between tests. This can indicate a replaced instrument cluster, a recording error, or that the vehicle has been clocked."
+                : "The mileage recorded between tests is unusually high for the time elapsed.",
+            FontSize = 13,
+            TextColor = accent,
+            LineBreakMode = LineBreakMode.WordWrap
+        });
+
+        foreach (var anomaly in report.Anomalies)
+        {
+            MileageWarningContent.Children.Add(new Label
+            {
+                Text = $"• {anomaly.Description}",
+                FontSize = 12,
+                TextColor = accent,
+                LineBreakMode = LineBreakMode.WordWrap,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+        }
+
+        MileageWarningBanner.IsVisible = true;
+    }
+
+    /// <summary>
+    /// Builds the DVLA tax/emissions card. Hidden entirely when no DVLA key is configured
+    /// and nothing went wrong, so the card never appears as an empty shell.
+    /// </summary>
+    private void BuildTaxCard(VehicleTaxInfo? tax, string? error)
+    {
+        TaxCardContent.Children.Clear();
+
+        if (tax is null && string.IsNullOrWhiteSpace(error))
+        {
+            TaxCard.IsVisible = false;
+            return;
+        }
+
+        TaxCardContent.Children.Add(new Label
+        {
+            Text = "TAX & EMISSIONS",
+            FontSize = 13,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = Color.FromArgb("#6E6E73"),
+            CharacterSpacing = 0.3
+        });
+
+        if (tax is null)
+        {
+            TaxCardContent.Children.Add(new Label
+            {
+                Text = error,
+                FontSize = 13,
+                TextColor = Color.FromArgb("#FF3B30"),
+                LineBreakMode = LineBreakMode.WordWrap
+            });
+            TaxCard.IsVisible = true;
+            return;
+        }
+
+        // Tax status chip + due date
+        var (chipText, chipFg, chipBg) = tax switch
+        {
+            { IsTaxed: true } => (tax.TaxStatusDisplay.ToUpperInvariant(), Color.FromArgb("#1A7A32"), Color.FromArgb("#E8F8EC")),
+            { IsSorn: true } => (tax.TaxStatusDisplay.ToUpperInvariant(), Color.FromArgb("#8E5A00"), Color.FromArgb("#FFF6E8")),
+            _ => (tax.TaxStatusDisplay.ToUpperInvariant(), Color.FromArgb("#CC1900"), Color.FromArgb("#FFF0EF"))
+        };
+
+        var statusRow = new HorizontalStackLayout { Spacing = 10, Margin = new Thickness(0, 2, 0, 0) };
+        statusRow.Children.Add(BuildChip(chipText, chipFg, chipBg));
+
+        if (tax.TaxDueDate.HasValue)
+        {
+            var overdue = tax.IsTaxOverdue;
+            var dueSoon = tax.IsTaxDueSoon;
+            statusRow.Children.Add(new Label
+            {
+                Text = tax.TaxDueDisplay,
+                FontSize = 13,
+                FontAttributes = overdue || dueSoon ? FontAttributes.Bold : FontAttributes.None,
+                TextColor = overdue ? Color.FromArgb("#CC1900")
+                          : dueSoon ? Color.FromArgb("#8E5A00")
+                          : Color.FromArgb("#6E6E73"),
+                VerticalOptions = LayoutOptions.Center
+            });
+        }
+
+        TaxCardContent.Children.Add(statusRow);
+
+        // Estimated VED
+        var ved = VedCalculator.Estimate(tax);
+        if (ved.HasRate)
+        {
+            TaxCardContent.Children.Add(BuildDivider());
+            TaxCardContent.Children.Add(BuildDetailRow(
+                "Estimated road tax",
+                $"{ved.RateDisplay}/yr{(ved.Band is null ? "" : $"  ({ved.Band})")}"));
+            TaxCardContent.Children.Add(BuildFootnote(
+                $"{ved.Basis}. {VedCalculator.RateTableTaxYear} rates — verify at gov.uk/vehicle-tax-rate-tables."));
+            if (ved.Caveat is not null)
+                TaxCardContent.Children.Add(BuildFootnote(ved.Caveat));
+        }
+
+        // Emissions + ULEZ
+        var emissionParts = new List<string>();
+        if (!string.IsNullOrEmpty(tax.Co2Display)) emissionParts.Add(tax.Co2Display);
+        if (!string.IsNullOrEmpty(tax.EuroStatusDisplay)) emissionParts.Add(tax.EuroStatusDisplay);
+
+        if (emissionParts.Count > 0)
+        {
+            TaxCardContent.Children.Add(BuildDivider());
+            TaxCardContent.Children.Add(BuildDetailRow("Emissions", string.Join(" · ", emissionParts)));
+        }
+
+        var ulez = UlezChecker.Check(tax);
+        if (ulez.Verdict != UlezVerdict.Unknown)
+        {
+            if (emissionParts.Count == 0) TaxCardContent.Children.Add(BuildDivider());
+            TaxCardContent.Children.Add(BuildDetailRow(
+                "ULEZ",
+                ulez.VerdictDisplay,
+                ulez.Verdict == UlezVerdict.Compliant ? Color.FromArgb("#1A7A32") : Color.FromArgb("#CC1900")));
+            TaxCardContent.Children.Add(BuildFootnote(
+                $"{ulez.Reason} Estimate only — confirm at tfl.gov.uk."));
+        }
+
+        // Provenance flags
+        if (tax.MarkedForExport)
+        {
+            TaxCardContent.Children.Add(BuildDivider());
+            TaxCardContent.Children.Add(BuildDetailRow("Export marker", "Marked for export", Color.FromArgb("#CC1900")));
+        }
+
+        if (tax.V5CRecentlyIssued)
+        {
+            TaxCardContent.Children.Add(BuildDivider());
+            TaxCardContent.Children.Add(BuildDetailRow(
+                "Last V5C issued",
+                tax.DateOfLastV5CIssued!.Value.ToString("d MMM yyyy")));
+            TaxCardContent.Children.Add(BuildFootnote(
+                "A recently issued logbook often means the vehicle has changed keeper."));
+        }
+
+        TaxCard.IsVisible = true;
+    }
+
+    private static View BuildDivider() => new BoxView
+    {
+        HeightRequest = 1,
+        BackgroundColor = Color.FromArgb("#C6C6C8"),
+        Margin = new Thickness(0, 6)
+    };
+
+    private static View BuildDetailRow(string label, string value, Color? valueColor = null)
+    {
+        var row = new Grid
+        {
+            ColumnDefinitions =
+            [
+                new ColumnDefinition(GridLength.Auto),
+                new ColumnDefinition(GridLength.Star)
+            ],
+            ColumnSpacing = 12
+        };
+
+        var labelView = new Label
+        {
+            Text = label,
+            FontSize = 13,
+            TextColor = Color.FromArgb("#6E6E73"),
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        var valueView = new Label
+        {
+            Text = value,
+            FontSize = 14,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = valueColor ?? Color.FromArgb("#1C1C1E"),
+            HorizontalTextAlignment = TextAlignment.End,
+            LineBreakMode = LineBreakMode.WordWrap,
+            VerticalOptions = LayoutOptions.Center
+        };
+
+        row.SetColumn(labelView, 0);
+        row.SetColumn(valueView, 1);
+        row.Children.Add(labelView);
+        row.Children.Add(valueView);
+        return row;
+    }
+
+    private static View BuildFootnote(string text) => new Label
+    {
+        Text = text,
+        FontSize = 11,
+        TextColor = Color.FromArgb("#AEAEB2"),
+        LineBreakMode = LineBreakMode.WordWrap
+    };
+
     private void BuildDefectTrends(List<MotTest> tests)
     {
         var recurring = tests
@@ -614,6 +935,22 @@ public partial class SearchPage : ContentPage
         sb.AppendLine($"MOT History for {_currentReg}");
         if (_currentVehicle?.HasDetail == true)
             sb.AppendLine(_currentVehicle.MakeModel);
+
+        if (_currentVehicle?.HasOutstandingRecall == true)
+            sb.AppendLine("WARNING: outstanding manufacturer safety recall.");
+
+        if (_currentTaxInfo is { } tax)
+        {
+            sb.AppendLine($"Tax: {tax.TaxStatusDisplay}{(tax.TaxDueDate.HasValue ? $" ({tax.TaxDueDisplay})" : "")}");
+            if (!string.IsNullOrEmpty(tax.Co2Display)) sb.AppendLine($"CO2: {tax.Co2Display}");
+        }
+
+        if (_currentMileage.HasRollback)
+            sb.AppendLine("WARNING: odometer reading decreases between tests.");
+
+        if (_currentMileage.AverageAnnualDisplay is { } average)
+            sb.AppendLine($"Average use: {average}");
+
         sb.AppendLine();
 
         foreach (var t in _currentTests)
@@ -673,6 +1010,20 @@ public partial class SearchPage : ContentPage
             v.TryGetProperty(key, out var p) && p.ValueKind != JsonValueKind.Null
                 ? p.GetString() ?? "" : "";
 
+        // hasOutstandingRecall is documented as a string ("Yes"/"No"/"Unknown"), but accept
+        // a JSON boolean too in case DVSA changes the representation.
+        string GetFlag(string key)
+        {
+            if (!v.TryGetProperty(key, out var p)) return "";
+            return p.ValueKind switch
+            {
+                JsonValueKind.String => p.GetString() ?? "",
+                JsonValueKind.True => "Yes",
+                JsonValueKind.False => "No",
+                _ => ""
+            };
+        }
+
         DateTime? firstUsed = null;
         if (v.TryGetProperty("firstUsedDate", out var fud) && fud.ValueKind != JsonValueKind.Null)
             if (DateTime.TryParse(fud.GetString(), out var dt)) firstUsed = dt;
@@ -685,7 +1036,8 @@ public partial class SearchPage : ContentPage
             Colour = Get("primaryColour"),
             FuelType = Get("fuelType"),
             EngineSize = Get("engineSize"),
-            FirstUsedDate = firstUsed
+            FirstUsedDate = firstUsed,
+            OutstandingRecall = GetFlag("hasOutstandingRecall")
         };
     }
 

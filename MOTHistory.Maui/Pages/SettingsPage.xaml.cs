@@ -37,6 +37,8 @@ public partial class SettingsPage : ContentPage
         BaseUrlEntry.Text = settings.BaseUrl;
         ScopeUrlEntry.Text = settings.ScopeUrl;
         TokenUrlEntry.Text = settings.TokenUrl;
+        DvlaApiKeyEntry.Text = settings.DvlaApiKey;
+        DvlaBaseUrlEntry.Text = settings.DvlaBaseUrl;
     }
 
     private async void OnSaveClicked(object? sender, EventArgs e)
@@ -49,6 +51,8 @@ public partial class SettingsPage : ContentPage
             BaseUrl = BaseUrlEntry.Text?.Trim(),
             ScopeUrl = ScopeUrlEntry.Text?.Trim(),
             TokenUrl = TokenUrlEntry.Text?.Trim(),
+            DvlaApiKey = DvlaApiKeyEntry.Text?.Trim(),
+            DvlaBaseUrl = DvlaBaseUrlEntry.Text?.Trim(),
         };
 
         SetSavingState(true);
@@ -88,6 +92,8 @@ public partial class SettingsPage : ContentPage
         BaseUrlEntry.Text = "";
         ScopeUrlEntry.Text = "";
         TokenUrlEntry.Text = "";
+        DvlaApiKeyEntry.Text = "";
+        DvlaBaseUrlEntry.Text = "";
         ShowStatus(success: true, title: "Credentials cleared", detail: null);
     }
 

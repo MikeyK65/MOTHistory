@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddSingleton<DVSASettingsService>();
 builder.Services.AddHttpClient<DVSAApiService>();
+builder.Services.AddHttpClient<DVLAApiService>();
 
 var app = builder.Build();
 

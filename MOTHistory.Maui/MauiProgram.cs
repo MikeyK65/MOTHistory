@@ -25,6 +25,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<PendingSearchService>();
         builder.Services.AddSingleton<NotificationService>();
         builder.Services.AddHttpClient<DVSAApiService>();
+        builder.Services.AddHttpClient<DVLAApiService>();
         builder.Services.AddTransient<SearchPage>();
         builder.Services.AddTransient<SettingsPage>();
         builder.Services.AddTransient<GaragePage>();
